@@ -1,4 +1,4 @@
-# Cyjon OS
+#Cyjon OS
 Prosty i wielozadaniowy system operacyjny, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
 ![alt tag](http://wataha.net/shot/6.png)
@@ -27,12 +27,13 @@ Prosty i wielozadaniowy system operacyjny, napisany w języku asemblera dla proc
 #Uwagi:
 Emulatory pod systemem z rodziny MS/Windows mogą nie obsługiwać prawidłowo klawiszy strzałek/kursorów. Nie mam pojęcia kogo to wina - emulatora czy systemu.
 
-
+#Credit:
 Jeśli udało ci się nanieść poprawkę, ulepszenie lub coś zupełnie nowego w źródle systemu,
 dopisz się do grupy programistów Wataha.net!
 
 - Andrzej Adamczyk, akasei
 
+#License:
 Kod źródlowy systemu operacyjnego jest na licencji Creative Commons BY-NC-ND 4.0
 
 ![alt tag](http://mirrors.creativecommons.org/presskit/buttons/80x15/png/by-nc-nd.png)
