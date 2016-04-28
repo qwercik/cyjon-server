@@ -14,22 +14,47 @@
 ; zestaw imiennych wartości stałych
 %include	"config.asm"
 
-; 64 bitowy kod
-[BITS 64]
-
-; położenie kodu jądra systemu w pamięci logicznej/fizycznej
-[ORG VARIABLE_KERNEL_PHYSICAL_ADDRESS]
-
 struc	HEADER
 	.cpu	resb	1
 	.video	resb	1
 endstruc
 
+align	4
+
+MULTIBOOT_PAGE_ALIGN	equ 1<<0
+MULTIBOOT_MEMORY_INFO	equ 1<<1
+MULTIBOOT_HEADER_MAGIC	equ 0xEE85250D6
+MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO
+MULTIBOOT_CHECKSUM	equ -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+
+; MULTIBOOT ====================================================================
+multiboot_header:
+	dd	0xE85250D6
+	dd	0
+	dd	multiboot_header_end - multiboot_header
+	dd	0x100000000 - (0xE85250D6 + (multiboot_header_end - multiboot_header))
+
+	dw	0
+	dw	0
+	dd	8
+multiboot_header_end:
+; MULTIBOOT KONIEC =============================================================
+
+; 32 bitowy kod
+[BITS 32]
+
+start_protected_mode:
+	mov	dword [0xb8000],	0x2f4b2f4f
+	jmp	$
+
+; NAGŁÓWEK =====================================================================
 header:
-	; NAGŁÓWEK =============================================================
-	db	0x40	; 64 bitowy kod jądra systemu
+	db	0x20	; 32 bitowy kod jądra systemu
 	db	VARIABLE_FALSE	; true - tryb graficzny
-	; NAGŁÓWEK KONIEC ======================================================
+; NAGŁÓWEK KONIEC ==============================================================
+
+; 64 bitowy kod
+[BITS 64]
 
 start:
 	; przygotuj podstawowe dane, niezbędne do wyświetlania informacji

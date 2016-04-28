@@ -938,51 +938,6 @@ irq64_filesystem:
 	jmp	irq64.end
 
 .filesystem_root_directory:
-	; przygotuj miejsce w przestrzeni pamięci procesu na plik
-	push	r8
-
-	mov	r8,	variable_partition_specification_home
-
-	push	rbx
-	push	rcx
-	push	rdx
-	push	rsi
-	push	r8
-	push	r11
-
-	mov	rsi,	qword [r8 + KFS.knots_table_address]
-
-	mov	rax,	qword [rsi + KNOT.size_in_bytes]
-	xor	rdx,	rdx
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE
-	div	rcx
-
-	cmp	rdx,	VARIABLE_EMPTY
-	je	.filesystem_root_directory_ok
-
-	add	rax,	VARIABLE_INCREMENT
-
-.filesystem_root_directory_ok:
-	mov	rcx,	rax
-	mov	rax,	rdi
-	mov	rbx,	VARIABLE_MEMORY_HIGH_ADDRESS
-	sub	rax,	rbx
-	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
-	mov	r11,	cr3
-	call	cyjon_page_map_logical_area
-
-	pop	r11
-	pop	r8
-	pop	rsi
-	pop	rdx
-	pop	rcx
-	pop	rbx
-
-	xor	rax,	rax
-	call	cyjon_filesystem_kfs_file_read
-
-.filesystem_root_directory_end:
-	pop	r8
 
 	; koniec obsługi procedury
 	jmp	irq64.end

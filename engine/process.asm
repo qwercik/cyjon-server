@@ -118,7 +118,7 @@ cyjon_process_init:
 	call	cyjon_page_map_logical_area	; wykonaj
 
 	; utwórz stos kontekstu procesu
-	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - 0x1000	; ostatnie 4 KiB Low Memory
+	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - VARIABLE_MEMORY_PAGE_SIZE	; ostatnie 4 KiB Low Memory
 	mov	rbx,	0x03	; ustaw flagi 4 KiB, Administrator, 4 KiB, Odczyt/Zapis, Dostępna
 	mov	rcx,	1	; jedna strona o rozmiarze 4 KiB
 	call	cyjon_page_map_logical_area	; wykonaj
@@ -131,7 +131,7 @@ cyjon_process_init:
 	call	cyjon_page_clear
 
 	; przesuń wskaźnik na spreparowany wskaźnik szczytu stosu kontekstu procesu
-	add	rdi,	0x1000 - ( 5 * 0x08 )
+	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE - ( 5 * VARIABLE_QWORD_SIZE )
 
 	; odstaw na stos kontekstu procesu spreparowane dane powrotu z przerwania IRQ0
 
@@ -140,11 +140,11 @@ cyjon_process_init:
 	stosq	; zapisz
 
 	; CS
-	mov	rax,	0x18 | 3	; +3 typ: proces
+	mov	rax,	0x18 | 3
 	stosq	; zapisz
 
 	; EFLAGS
-	mov	rax,	0x246
+	mov	rax,	0x0200
 	stosq	; zapisz
 
 	; RSP
@@ -152,11 +152,11 @@ cyjon_process_init:
 	stosq	; zapisz
 
 	; DS
-	mov	rax,	0x20 | 3	; +3 typ: proces
+	mov	rax,	0x20 | 3
 	stosq	; zapisz
 
 	mov	rdi,	qword [variable_multitasking_serpentine_start_address]
-	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - 0x08 ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
 
 	jmp	.do_not_leave_me
 
@@ -170,7 +170,7 @@ cyjon_process_init:
 	cmp	rcx,	VARIABLE_EMPTY
 	ja	.in_page
 
-	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - 0x08 ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
 
 	and	di,	0xF000
 	add	rdi,	0x0FF8

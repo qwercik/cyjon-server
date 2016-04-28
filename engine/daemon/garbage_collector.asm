@@ -120,7 +120,7 @@ daemon_init_garbage_collector:
 	stosq	; zapisz
 
 	; EFLAGS
-	mov	rax,	0x246
+	mov	rax,	0x200
 	stosq	; zapisz
 
 	; RSP

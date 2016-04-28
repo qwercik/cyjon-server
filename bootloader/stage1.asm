@@ -128,10 +128,10 @@ times	510 - ( $ - $$ )	db	VARIABLE_EMPTY
 dw	0xAA55	; czysta magija
 
 ; dołącz program rozruchowy
-incbin	"stage2.bin"
+incbin	"build/stage2.bin"
 
 ; na systemach z rodziny MS/Windows, oprogramowanie Bochs wymaga obrazu dysku o rozmiarze > 1MiB i wyrównanego do pełnego sektora (512 Bajtów)
 times	512 * 2048 - ( $ - $$ )	db	0x00
 
-; dołącz partycję wraz z zawartością
-incbin	"build/kfs.raw"
+; dołącz partycję
+incbin	"build/empty_ext4.raw"
