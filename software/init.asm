@@ -11,10 +11,10 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-%define	VARIABLE_PROGRAM_VERSION	"v0.2"
-
-; kolory, stałe
+; zestaw imiennych wartości stałych
 %include	'config.asm'
+
+%define	VARIABLE_PROGRAM_VERSION	"v0.4"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -27,9 +27,9 @@
 
 start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	ecx,	VARIABLE_FULL
-	mov	edx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	bl,	VARIABLE_COLOR_DEFAULT
+	mov	cl,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_init
 	int	STATIC_KERNEL_SERVICE
 
@@ -48,28 +48,21 @@ start:
 
 	; procedura - wyświetl ciąg znaków na ekranie w miejscu kursora
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ecx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
-	mov	edx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	cl,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 
-	;kolor znaków
-	mov	ebx,	VARIABLE_COLOR_LIGHT_BLUE
-	; wskaźnik do ciągu znaków zakończony terminatorem lub licznikiem
+	mov	bl,	VARIABLE_COLOR_LIGHT_BLUE
 	mov	rsi,	text_welcome
 	int	STATIC_KERNEL_SERVICE
 
-	;kolor znaków
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	; wskaźnik do ciągu znaków zakończony terminatorem lub licznikiem
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	rsi,	text_separator
 	int	STATIC_KERNEL_SERVICE
 
-	;kolor znaków
-	mov	ebx,	VARIABLE_COLOR_LIGHT_GRAY
-	; wskaźnik do ciągu znaków zakończony terminatorem lub licznikiem
+	mov	bl,	VARIABLE_COLOR_LIGHT_GRAY
 	mov	rsi,	text_version
 	int	STATIC_KERNEL_SERVICE
 
-	;=======================================================================
 	; uruchom proces logowania do konsoli
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
 	mov	ecx,	dword [file_login_name_length]	; ilość znaków w nazwie pliku
@@ -78,35 +71,34 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 	; sprawdź czy proces zakończył pracę
-	call	check
+	call	check_process_run
 
-	;=======================================================================
-	; uruchom powłokę systemu
+	; autoryzacja przyznana, uruchom powłokę systemu
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
-	mov	ecx,	dword [file_shell_name_length]	; ilość znaków w nazwie pliku
-	xor	rdx,	rdx	; brak argumentów
+	mov	ecx,	dword [file_shell_name_length]
+	xor	rdx,	rdx
 	mov	rsi,	file_shell
 	int	STATIC_KERNEL_SERVICE
 
-	; sprawdź czy proces zakończył pracę
-	call	check
+	; sprawdź czy powołoka zakończyła pracę
+	call	check_process_run
 
-	; inicjalizuj ponownie powłokę
+	; zalokuj dostęp do konsoli
 	jmp	.reload
 
+;===============================================================================
 ; rcx - numer PID procesu do sprawdzenia
-check:
+check_process_run:
 	; zachowaj oryginalne rejestry
 	push	rax
 
 	; pobierz informację o procesie
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_CHECK
-	; rcx - numer PID procesu	
 
 .wait:
 	int	STATIC_KERNEL_SERVICE
 
-	; sprawdź czy proces zakończył pracę / poprawne zalogowanie się do systemu
+	; sprawdź czy proces zakończył pracę
 	cmp	rcx,	VARIABLE_EMPTY
 	ja	.wait	; jeśli nie, czekaj dalej
 
@@ -116,14 +108,19 @@ check:
 	; powrót z procedury
 	ret
 
-text_init	db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE
-		db	"INIT: ", VARIABLE_PROGRAM_VERSION, " ready.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_welcome	db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE
-		db	"     W a t a h a . n e t", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_separator	db	"   -----------------------", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_version	db	"              Cyjon v", VARIABLE_KERNEL_VERSION, VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
+; wczytaj lokalizacje programu systemu
+%push
+	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
+	%strcat		%$include_program_locale,	"software/init/locale/", %$system_locale, ".asm"
+	%include	%$include_program_locale
+%pop
+
+text_welcome		db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE
+			db	"     W a t a h a . n e t", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
+text_separator		db	"   -----------------------", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
+text_version		db	"              Cyjon v", VARIABLE_KERNEL_VERSION, VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
 
 file_login		db	'login'
-file_login_name_length	dq	5
+file_login_name_length	dd	5
 file_shell		db	'shell'
-file_shell_name_length	dq	5
+file_shell_name_length	dd	5

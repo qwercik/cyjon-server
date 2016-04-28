@@ -14,15 +14,15 @@
 ; zestaw imiennych wartości stałych
 %include	"config.asm"
 
-%define	VARIABLE_PROGRAM_VERSION	"w0.47"
-
-; adresacja względna
-[DEFAULT REL]
+%define	VARIABLE_PROGRAM_VERSION	"v0.48"
 
 ; 64 bitowy kod programu
 [BITS 64]
 
-; adres logiczny kodu programu
+; adresowanie względne (skoki, etykiety)
+[DEFAULT REL]
+
+; adres kodu programu w przestrzeni logicznej
 [ORG VARIABLE_MEMORY_HIGH_REAL_ADDRESS]
 
 prestart:
@@ -33,7 +33,7 @@ prestart:
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_help
 	int	STATIC_KERNEL_SERVICE
-	
+
 start:
 	; wyświetl znak zachęty
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
@@ -178,18 +178,18 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 .noExit:
-	; uruchom program o podanej nazwie
-	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
-	mov	rsi,	rdi	; załaduj wskaźnik nazwy pliku
-	; przekaż listę argumentów do uruchamianego procesu
-	mov	rdi,	command_cache
-	mov	rdx,	qword [command_cache_size]
-	int	STATIC_KERNEL_SERVICE
-
-	; sprawdź czy uruchomiono nowy proces
-	cmp	rcx,	VARIABLE_EMPTY
-	ja	.process
-
+;	; uruchom program o podanej nazwie
+;	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
+;	mov	rsi,	rdi	; załaduj wskaźnik nazwy pliku
+;	; przekaż listę argumentów do uruchamianego procesu
+;	mov	rdi,	command_cache
+;	mov	rdx,	qword [command_cache_size]
+;	int	STATIC_KERNEL_SERVICE
+;
+;	; sprawdź czy uruchomiono nowy proces
+;	cmp	rcx,	VARIABLE_EMPTY
+;	ja	.process
+;
 	; wyświetl informację o braku danego programu na partycji systemowej
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
 	mov	rcx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
@@ -219,18 +219,20 @@ start:
 %include	'library/find_first_word.asm'
 %include	'library/compare_string.asm'
 
+; wczytaj lokalizacje programu systemu
+%push
+	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
+	%strcat		%$include_program_locale,	"software/shell/locale/", %$system_locale, ".asm"
+	%include	%$include_program_locale
+%pop
+
 command_cache	times	256	db	VARIABLE_EMPTY
 				db	VARIABLE_ASCII_CODE_TERMINATOR
 command_cache_size		dq	VARIABLE_EMPTY
 
-text_help			db	"Type 'help' for more info.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
 text_prompt_with_newline	db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE
 text_prompt			db	"localhost / # ", VARIABLE_ASCII_CODE_TERMINATOR
 text_newline			db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_ups			db	"Command not found.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_inception			db	'Inception, good movie.', VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_blocked			db	"No, you can't.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_login			db	"Online.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
 
 command_clear			db	'clear'
 command_clear_count		db	5

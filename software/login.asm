@@ -11,7 +11,7 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-; kolory, stałe
+; zestaw imiennych wartości stałych
 %include	'config.asm'
 
 ; 64 Bitowy kod programu
@@ -62,11 +62,13 @@ start:
 %include	'library/input.asm'
 %include	'library/compare_string.asm'
 
-variable_passwd_tmp		db	'toor'
-variable_passwd_tmp_count	db	4
+; wczytaj lokalizacje programu systemu
+%push
+	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
+	%strcat		%$include_program_locale,	"software/login/locale/", %$system_locale, ".asm"
+	%include	%$include_program_locale
+%pop
 
-text_login				db	'localhost login: ', VARIABLE_ASCII_CODE_TERMINATOR
 text_login_cache	times	16	db	VARIABLE_EMPTY
-text_password				db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, 'Password: ', VARIABLE_ASCII_CODE_TERMINATOR
 text_password_cache	times	16	db	VARIABLE_EMPTY
 text_space				db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR

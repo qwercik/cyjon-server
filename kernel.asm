@@ -14,203 +14,163 @@
 ; zestaw imiennych wartości stałych
 %include	"config.asm"
 
-struc	HEADER
-	.cpu	resb	1
-	.video	resb	1
-endstruc
-
-align	4
-
-MULTIBOOT_PAGE_ALIGN	equ 1<<0
-MULTIBOOT_MEMORY_INFO	equ 1<<1
-MULTIBOOT_HEADER_MAGIC	equ 0xEE85250D6
-MULTIBOOT_HEADER_FLAGS	equ MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO
-MULTIBOOT_CHECKSUM	equ -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
-
-; MULTIBOOT ====================================================================
-multiboot_header:
-	dd	0xE85250D6
-	dd	0
-	dd	multiboot_header_end - multiboot_header
-	dd	0x100000000 - (0xE85250D6 + (multiboot_header_end - multiboot_header))
-
-	dw	0
-	dw	0
-	dd	8
-multiboot_header_end:
-; MULTIBOOT KONIEC =============================================================
-
-; 32 bitowy kod
+;-------------------------------------------------------------------------------
+; 32 bitowy kod jądra systemu
+;-------------------------------------------------------------------------------
 [BITS 32]
 
-start_protected_mode:
-	mov	dword [0xb8000],	0x2f4b2f4f
-	jmp	$
+; położenie kodu jądra systemu w pamięci fizycznej/logicznej
+[ORG VARIABLE_KERNEL_PHYSICAL_ADDRESS]
 
 ; NAGŁÓWEK =====================================================================
 header:
-	db	0x20	; 32 bitowy kod jądra systemu
-	db	VARIABLE_FALSE	; true - tryb graficzny
+	; informacja dla programu rozruchowego Omega
+	db	0x20	; kod jądra systemu rozpoczyna się od 32 bitowych instrukcji
 ; NAGŁÓWEK KONIEC ==============================================================
 
-; 64 bitowy kod
+_start:
+	; poinformuj jądro systemu o wykorzystaniu własnego programu rozruchowego
+	mov	byte [variable_bootloader_own],	VARIABLE_TRUE
+
+	; skocz do procedury przełączania procesora w tryb 64 bitowy
+	jmp	entry	; plik engine/init.asm
+
+variable_bootloader_own	db	VARIABLE_EMPTY
+
+%include	"engine/multiboot.asm"
+%include	"engine/init.asm"
+
+; rozpocznij 64 bitowy kod jądra systemu od pełnego adresu
+align	0x0100
+
+;-------------------------------------------------------------------------------
+; 64 bitowy kod jądra systemu
+;-------------------------------------------------------------------------------
 [BITS 64]
 
-start:
-	; przygotuj podstawowe dane, niezbędne do wyświetlania informacji
-	call	screen_initialization
-	; przygotuj binarną mapę pamięci dla jądra systemu
-	call	binary_memory_map
-	; utwórz własną tablicę GDT
-	call	global_descriptor_table
-	; przygotuj nowe stronicowanie dla przestrzeni jądra systemu
-	call	recreate_paging
-	; mapuj przestrzeń pamięci ekranu pod nowe stronicowanie
-	call	screen_initialization_reload
+kernel:
+	; ustaw deskryptory danych, ekstra i stosu
+	mov	ax,	VARIABLE_KERNEL_DS_SELECTOR
 
-	; inicjalizacja pełnego środowiska jądra systemu gotowa
+	; podstawowe segmenty
+	mov	ds,	ax	; segment danych
+	mov	es,	ax	; segment ekstra
+	mov	ss,	ax	; segment stosu
+
+	; wyczyść ekran
+	call	cyjon_screen_clear
+
+	; zachowaj adres mapy pamięci
+	push	rbx	; GRUB
+	push	rsi	; OMEGA
+
+	; wyświetl informacje powitalną
+	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN + VARIABLE_COLOR_BACKGROUND_BLACK
+	mov	cl,	VARIABLE_FULL
+	mov	rsi,	text_kernel_welcome
+	call	cyjon_screen_print_string
+
+	; przywróć adres mapy pamięci
+	pop	rsi	; OMEGA
+	pop	rbx	; GRUB
+
+	; zarejestruj dostępną przestrzeń pamięci w Binarnej Mapie Pamięci
+	call	binary_memory_map
+
+	; utwórz własną Globalną Tablicę Deskryptorów
+	call	global_descriptor_table
+
+	; utwórz nowe tablice stronicowania dla jądra systemu
+	call	recreate_paging
+
+	; przygotuj obsługę wyjątków i przerwań procesora, przerwań użyktownika
+	call	interrupt_descriptor_table
 
 	; przemapuj numery przerwań sprzętowych pod 0x20..0x2F
 	call	programmable_interrupt_controller
+
 	; ustaw częstotliwość wywołań przerwania sprzętowego IRQ0
 	call	programmable_interval_timer
-	; dodaj jądro systemu do kolejki procesów
+
+	; przygotuj kolejkę procesów (nazwaną 'Serpentyna') i załaduj do niej jądro systemu
 	call	multitasking
-	; konfiguruj klawiature
+
+	; załaduj podstawową macierz znaków klawiatury
 	call	keyboard
-	; skonfiguruj myszke PS2
-	call	mouse
-	; przygotuj obsługę wyjątków i przerwań procesora, przerwań użyktownika
-	call	interrupt_descriptor_table
+
+	; uruchom demona - sieci
+	movzx	rcx,	byte [variable_daemon_network_name_count]
+	mov	rdx,	daemon_network
+	mov	rsi,	text_daemon_network_name
+	call	cyjon_process_init_daemon
+
+	; uruchom demona - kolekcjonera śmieci
+	movzx	rcx,	byte [variable_daemon_garbage_collector_name_count]
+	mov	rdx,	daemon_garbage_collector
+	mov	rsi,	text_daemon_garbage_collector_name
+	call	cyjon_process_init_daemon
+
 
 	; włączamy przerwania i wyjątki procesora
 	sti	; tchnij życie
 
-	; włącz przerwania sprzętowe IRQ0 (planista), IRQ1 (klawiatura)
-	mov	al,	11101111b	; irq15, irq14, irq13, mouse, irq11, irq10, irq9, irq8
-	out	0xA1,	al
-	mov	al,	11011100b	; irq7, irq6, sound, irq4, irq3, irq2, keyboard, sheduler/clock
-	out	0x21,	al
+	; przygotuj wirtualny system plików na programy wbudowane
+	call	virtual_file_system
 
-	; resetuj karte dźwiękową SB16
-	call	sound
+	; inicjalizuj pierwszą dostępną kartę sieciową
+	call	network_init
 
-	; szukaj karty sieciowej
-	call	cyjon_network_i8254x_find_card
-
-	; szukaj dysków sata
-	call	cyjon_ahci_initialize
-
-	; Qemu wykrzacza się na sterowniku IDE/ATA PIO, nie mam debugera - nie sprawdzę dlaczego
-	; zatem wirtualny dysk będę podłączał pod AHCI/SATA, Bochs będzie obdługiwał IDE/ATA PIO
-	; sprawdź czy znaleziono dysk pod kontrolerem AHCI/SATA
-	cmp	byte [variable_ahci_semaphore],	VARIABLE_EMPTY
-	ja	.ahci_found
-
-	; zainicjalizuj dostęp do nośnika IDE0 Master
-	call	ide_initialize
-
-.ahci_found:
-	; przygotuj wirtualne systemy plików (płaski system plików)
-	; wirtualny system plików zostanie przygotowany na nowo (wzorem z ext2), aby mieć obsługe katalogów
-	call	virtual_file_systems
-
-	; uruchom niezbędne demony
-	call	daemon_init_disk_io
-	call	daemon_init_garbage_collector
-	call	daemon_init_dma
-
-	; inizjalizuj system plików
-	mov	rax,	2048
-	mov	rcx,	1	; rozmiar superbloku, 1 blok
-	mov	r8,	variable_partition_specification_home
-	call	cyjon_filesystem_kfs_initialization
-
-	; utwórz plik readme.txt w głównym systemie plików /
-	;call	create_readme
-	; utwórz plik hostname
-	;call	create_hostname
-
-	; załaduj do wirtualnego systemu plików, dołączone oprogramowanie
+	; zarejestruj dołączone oprogramowanie w wirtualnym systemie plików jądra systemu
 	call	move_included_files_to_virtual_filesystem
 
-	; oblicz rozmiar przestrzeni do zwolnienia w Bajtach
-	mov	rcx,	end
-	sub	rcx,	release_memory
-	; zamień na ilość stron zajętych
-	shr	rcx,	12	; /4096
+	; uruchom pierwszy proces "init"
+	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
+	xor	rdx,	rdx	; brak argumentów
+	mov	rsi,	files_table + ( VARIABLE_QWORD_SIZE * 4 )	; wskaźnik do nazwy pliku
+	call	cyjon_process_init
 
-	; rozpocznij zwalnianie przestrzeni od adresu
-	mov	rdi,	release_memory
+	; zatrzymaj dalsze wykonywanie kodu jdra systemu
+	jmp	$
 
-.loop:
-	; zwolnij zajętą przestrzeń
-	call	cyjon_page_release
-	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
-	sub	rcx,	VARIABLE_DECREMENT
-	jnz	.loop
-
-	; uruchom proces główny INIT
-	mov	rcx,	qword [file_load_init]	; ilość znaków nazwie pliku
-	mov	rsi,	file_load_init_pointer	; wskaźnik do ciągu znaków reprezentujący nazwe pliku
-	mov	r8,	variable_partition_specification_system	; z partycji systemowej
-	call	cyjon_process_init	; wykonaj
-
-	; nie potrzebujemy pamiętać numeru PID procesu init
-	mov	qword [variable_process_pid],	VARIABLE_EMPTY
-
-%include	"engine/alive.asm"
-
-%include	"engine/init/binary_memory_map.asm"
-%include	"engine/init/global_descriptor_table.asm"
-%include	"engine/init/paging.asm"
-
-%include	"engine/database.asm"
 %include	"engine/screen.asm"
+%include	"engine/binary_memory_map.asm"
 %include	"engine/paging.asm"
+%include	"engine/global_descriptor_table.asm"
+%include	"engine/interrupt_descriptor_table.asm"
+%include	"engine/multitasking.asm"
 %include	"engine/programmable_interrupt_controller.asm"
 %include	"engine/programmable_interval_timer.asm"
-%include	"engine/multitasking.asm"
-%include	"engine/keyboard.asm"
-%include	"engine/mouse.asm"
-%include	"engine/sound.asm"
-%include	"engine/interrupt_descriptor_table.asm"
 %include	"engine/virtual_file_system.asm"
-%include	"engine/process.asm"
+%include	"engine/keyboard.asm"
 %include	"engine/services.asm"
+%include	"engine/process.asm"
+%include	"engine/network.asm"
+
+%include	"engine/variables.asm"
 
 %include	"engine/daemon/garbage_collector.asm"
-%include	"engine/daemon/disk_io.asm"
-%include	"engine/daemon/dma.asm"
+%include	"engine/daemon/network.asm"
 
 %include	"engine/drivers/pci.asm"
-%include	"engine/drivers/ide.asm"
-%include	"engine/drivers/ahci.asm"
-
 %include	"engine/drivers/network/i8254x.asm"
 
-%include	"engine/drivers/filesystem/kfs.asm"
+; wczytaj lokalizacje jądra systemu
+%push
+	%defstr		%$kernel_locale			VARIABLE_KERNEL_LOCALE
+	%strcat		%$include_kernel_locale,	"locale/", %$kernel_locale, ".asm"
+	%include	%$include_kernel_locale
+%pop
 
 %include	"library/align_address_up_to_page.asm"
 %include	"library/find_free_bit.asm"
 %include	"library/compare_string.asm"
-%include	"library/find_first_word.asm"
-
-%include	VARIABLE_FONT_MATRIX_DEFAULT
-
-file_load_init		dq	4
-file_load_init_pointer	db	"init"
-
-; dołączone oprogramowanie wyrównaj do pełnego adresu strony, będzie można zwolnić na końcu inicjalizacji dodatkową przestrzeń dla 
-align	0x1000
-
-; poniższe strony pamięci zostaną zwolnione po przetworzeniu
-release_memory:
-
-%include	"software/internal.asm"
 
 ; wskaźnik końca kodu jądra wyrównaj do pełnego adresu strony
 align	0x1000
 
-; koniec kodu jądra systemu + oprogramowania
-end:
+; wszystkie dołączone programy zostaną zarejestrowane w wirtualnym systemie plików jądra systemu
+; a poniższa przestrzeń zwolniona
+%include	"engine/software.asm"
+
+; koniec kodu jądra systemu
+kernel_end:

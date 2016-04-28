@@ -1,46 +1,11 @@
-# Cyjon OS
-Prosty i wielozadaniowy system operacyjny, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
+# Cyjon.
+This source code will be merged with Cyjon repository, after cleanUp!
 
-![alt tag](http://wataha.net/shot/shot11.png)
+Now localization is available! (file: config.asm, and dir: locale)
+Feel free to add Your language!
 
-![alt tag](http://wataha.net/shot/shot9.png)
+![No image? Try http://wataha.net/shot/3.png](http://wataha.net/shot/3.png)
 
-![alt tag](http://wataha.net/shot/message.png)
+![No image? Try http://wataha.net/shot/1.png](http://wataha.net/shot/1.png)
 
-![alt tag](http://wataha.net/shot/gif.gif)
-
-![alt tag](http://wataha.net/shot/msg.gif)
-
-#Wymagania sprzętowe:
-- procesor z rodziny amd64/x86-64,
-- 1 MiB pamięci RAM pod adresem fizycznym 0x0000000000100000,
-- obsługa VBE w trybie 640x400 8 bpp.
-
-#Oprogramowanie:
-- kompilator Nasm v2.11.08+ (http://www.nasm.us/)
-- oprogramowanie Bochs v2.6.8+ (http://sourceforge.net/projects/bochs/files/bochs/),
-
-#Kompilacja (z poziomu konsoli):
-
-    GNU/Linux:
-    polecenie "make"
-
-    MS/Windows:
-    polecenie "make.bat"
-
-#Uruchomienie:
-
-    W konfiguracji oprogramowania Bochs ustawiamy dysk wirtualny build/disk.raw jako IDE0 Master.
-
-#Uwagi:
-Emulatory pod systemem z rodziny MS/Windows nie obsługują prawidłowo klawiszy strzałek/kursorów. Nie mam pojęcia kogo to wina - emulatora czy systemu.
-
-
-Udało ci się nanieść poprawkę, ulepszenie lub coś zupełnie nowego w źródle systemu?
-Dopisz się do grupy programistów Wataha.net!
-
-- Andrzej Adamczyk, akasei
-
-Kod źródlowy systemu operacyjnego jest na licencji Creative Commons BY-NC-ND 4.0
-
-![alt tag](http://mirrors.creativecommons.org/presskit/buttons/80x15/png/by-nc-nd.png)
+![No image? Try http://wataha.net/shot/0.png](http://wataha.net/shot/0.png)

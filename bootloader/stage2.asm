@@ -35,9 +35,6 @@ start:
 	mov	ax,	0x0003
 	int	0x10
 
-	; załaduj własną czcionkę
-	call	stage2_reload_font
-
 	; sprawdź typ procesora
 	call	stage2_check_cpu
 
@@ -67,7 +64,6 @@ start:
 
 ; procedury 16 bitowe
 %include	"bootloader/stage2/disable_pic.asm"
-%include	"bootloader/stage2/reload_font.asm"
 %include	"bootloader/stage2/check_cpu.asm"
 %include	"bootloader/stage2/unlock_a20.asm"
 %include	"bootloader/stage2/memory_map.asm"
@@ -149,7 +145,7 @@ stage2_protected_mode:
 	mov	esi,	VARIABLE_MEMORY_MAP_ADDRESS
 
 	; skocz do kodu jądra systemu operacyjnego
-	jmp	long 0x08:VARIABLE_KERNEL_PHYSICAL_ADDRESS + 2	; +2 nagłówek
+	jmp	long 0x08:VARIABLE_KERNEL_PHYSICAL_ADDRESS + 1	; +1 nagłówek
 
 ;-------------------------------------------------------------------------------
 ; Przełączenie programu rozruchowego w tryb 64 bitowy.
@@ -207,7 +203,7 @@ stage2_long_mode:
 	mov	rsi,	VARIABLE_MEMORY_MAP_ADDRESS
 
 	; skocz do kodu jądra systemu operacyjnego
-	jmp	VARIABLE_KERNEL_PHYSICAL_ADDRESS + 0x02	; +2 nagłówek
+	jmp	VARIABLE_KERNEL_PHYSICAL_ADDRESS + 0x01	; +1 nagłówek
 
 ; zmienna określa adres procedury odczytującej dane z nośnika,
 ; jest ona uzupełniana na podstawie rozpoznania sterowników
@@ -220,10 +216,9 @@ variable_disk_interface_read	dd	VARIABLE_EMPTY
 %include	"bootloader/stage2/pci_driver_32bit.asm"
 %include	"bootloader/stage2/paging.asm"
 
-%include	"font/crispy.asm"
-
 ; wyrównaj położenie kodu jądra systemu do pełnego sektora
 align	0x200
+
 kernel:
-incbin	"build/kernel.bin"
+	incbin	"build/kernel.bin"
 end_of_kernel:

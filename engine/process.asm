@@ -14,11 +14,92 @@
 ; 64 Bitowy kod programu
 [BITS 64]
 
-variable_process_semaphore_init	db	VARIABLE_EMPTY
+;===============================================================================
+; procedura przygotowuje miejsce w pamięci pod proces demona i dodaje do kolejki serpentyny
+; IN:
+;	rcx - ilość znaków w nazwie demona
+;	rdx - wskaźnik do procedury demona
+;	rsi - wskaźnik do nazwy demona
+;
+; OUT:
+;	brak
+;
+; wszystkie rejestry zachowane
+cyjon_process_init_daemon:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rdx
+	push	rsi
+	push	rdi
+	push	r11
 
-variable_process_new		dq	VARIABLE_EMPTY
-variable_process_close		dq	VARIABLE_EMPTY
-variable_process_pid		dq	VARIABLE_EMPTY
+	; przygotuj tablice PML4 i stos kontekstu
+	call	cyjon_process_init_phase_0
+
+	; odstaw na stos kontekstu demona spreparowane dane powrotu z przerwania IRQ0
+
+	; RIP
+	mov	rax,	rdx	; wskaźnik procedury demona
+	stosq	; zapisz
+
+	; CS
+	mov	rax,	VARIABLE_KERNEL_CS_SELECTOR
+	stosq	; zapisz
+
+	; EFLAGS
+	mov	rax,	VARIABLE_EFLAGS_IF
+	stosq	; zapisz
+
+	; RSP
+	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS
+	stosq	; zapisz
+
+	; DS
+	mov	rax,	VARIABLE_KERNEL_DS_SELECTOR
+	stosq	; zapisz
+
+	; pobierz adres wolnego rekordu w tablicy serpentyny (kolejce procesów)
+	call	cyjon_process_init_phase_1
+
+	; przywróć aktualny dostępny numer PID
+	mov	rax,	rbx
+
+	; zapisz PID procesu do rekordu
+	stosq
+
+	; zapisz CR3 procesu
+	mov	rax,	r11
+	stosq
+
+	; zapisz adres szczytu stosu kontekstu procesu do rekordu
+	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - (21 * VARIABLE_QWORD_SIZE )
+	stosq
+
+	; ustaw flagę rekordu na aktywny
+	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE | STATIC_SERPENTINE_RECORD_FLAG_DAEMON
+	stosq
+
+	; zwiększ ilość rekordów/procesów przechowywanych w tablicy
+	inc	qword [variable_multitasking_serpentine_record_counter]
+
+	; załaduj nazwę demona do rekordu serpentyny
+	mov	rcx,	qword [rsp + 0x20]
+	mov	rsi,	qword [rsp + 0x10]
+	rep	movsb
+
+	; przywróć oryginalne rejestry
+	pop	r11
+	pop	rdi
+	pop	rsi
+	pop	rdx
+	pop	rcx
+	pop	rbx
+	pop	rax
+
+	; powrót z procedury
+	ret
 
 ;===============================================================================
 ; procedura uruchamia nowy proces, przydzielając pamięć i numer identyfikacyjny
@@ -32,72 +113,64 @@ variable_process_pid		dq	VARIABLE_EMPTY
 ; pozostałe rejestry zachowane
 cyjon_process_init:
 	; zachowaj oryginalne rejestry
+	push	rax
 	push	rbx
-	push	rcx
 	push	rdx
 	push	rsi
 	push	rdi
 	push	r8
 	push	r11
 
-	; szukaj pliku na partycji systemowej
+	; szukaj pliku w wirtualnym systemie plików
 	call	cyjon_virtual_file_system_find_file
-	jc	.found	; znaleziono plik
+	jc	.found	; znaleziono
 
-	; pliku nie znaleziono
-	xor	rcx,	rcx
+	; nie znaleziono
+	xor	rax,	rax
 
 	; koniec obsługi procedury
 	jmp	.end
 
 .found:
-.ready:
 	; pobierz rozmiar pliku w Bajtach
 	mov	rcx,	qword [rdi + 0x08]
-	; utwórz zmienną lokalną
 	push	rcx
 
-	; usuń młodszą część rozmiaru
+	; zaokrąglij rozmiar pliku do pełnej strony (w górę)
 	and	cx,	0xF000
-
-	; sprawdź czy rozmiar uległ zmianie
 	cmp	rcx,	qword [rsp]
-	je	.ok	; jeśli nie, ok
+	je	.size_ok
 
 	; jeśli tak, zwiększ rozmiar pliku o jedną stronę
 	add	rcx,	VARIABLE_MEMORY_PAGE_SIZE
 
-.ok:
+.size_ok:
 	; usuń zmienną lokalną
 	add	rsp,	0x08
 
 	; zamień rozmiar pliku na strony
-	shr	rcx,	12
+	shr	rcx,	VARIABLE_DIVIDE_BY_4096
 
-	; przygotuj przestrzeń pod proces w 254 rekordzie tablicy PML4 (limit rozmiaru programu 512 GiB)
+	; przygotuj przestrzeń pod proces w 254 rekordzie tablicy PML4 jądra systemu (limit rozmiaru programu 512 GiB)
 	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - ( VARIABLE_MEMORY_PML4_RECORD_SIZE * 2 )
 	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
 	mov	r11,	cr3	; tablica PML4 aktualnego procesu
-	call	cyjon_page_map_logical_area	; wykonaj
+	call	cyjon_page_map_logical_area
 
-	; załaduj plik do pamięci
+	; załaduj plik do pamięci pod przygotowaną przestrzeń
 	mov	rsi,	qword [rdi]	; numer pierwszego bloku danych pliku
 	mov	rdi,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - ( VARIABLE_MEMORY_PML4_RECORD_SIZE * 2 )
 	call	cyjon_virtual_file_system_read_file
 
 	; przygotuj miejsce dla tablicy PML4 procesu
 	call	cyjon_page_allocate
-
-	; zapamiętaj
-	push	rdi
+	; załaduj tablicę PML4 procesu
+	mov	r11,	rdi
 
 	; mapuj tablicę PML4 aktualnego procesu do nowego
 	mov	rsi,	cr3
 	mov	rcx,	255
 	rep	movsq	; kopiuj
-
-	; załaduj tablicę PML4 procesu
-	mov	r11,	qword [rsp]
 
 	; przesuń załadowany program w odpowiednie miejsce pamięci logicznej nowej tablicy PML4 procesu
 	mov	rax,	qword [r11 + 0x07F0]
@@ -140,11 +213,11 @@ cyjon_process_init:
 	stosq	; zapisz
 
 	; CS
-	mov	rax,	0x18 | 3
+	mov	rax,	VARIABLE_PROCESS_CS_SELECTOR | VARIABLE_SELECTOR_TYPE_PROCESS
 	stosq	; zapisz
 
 	; EFLAGS
-	mov	rax,	0x0200
+	mov	rax,	VARIABLE_EFLAGS_IF
 	stosq	; zapisz
 
 	; RSP
@@ -152,142 +225,40 @@ cyjon_process_init:
 	stosq	; zapisz
 
 	; DS
-	mov	rax,	0x20 | 3
+	mov	rax,	VARIABLE_PROCESS_DS_SELECTOR | VARIABLE_SELECTOR_TYPE_PROCESS
 	stosq	; zapisz
 
-	mov	rdi,	qword [variable_multitasking_serpentine_start_address]
-	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+	; pobierz adres wolnego rekordu w tablicy serpentyny (kolejce procesów)
+	call	cyjon_process_init_phase_1
 
-	jmp	.do_not_leave_me
-
-.next_record:
-	dec	rcx
-
-	; przesuń na następny rekord
-	add	rdi,	VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
-
-.do_not_leave_me:
-	cmp	rcx,	VARIABLE_EMPTY
-	ja	.in_page
-
-	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
-
-	and	di,	0xF000
-	add	rdi,	0x0FF8
-
-	cmp	qword [rdi],	VARIABLE_EMPTY
-	je	.serpentine_full
-
-	mov	rdi,	qword [rdi]
-
-	jmp	.in_page
-
-.serpentine_full:
-	push	rdi
-
-	call	cyjon_page_allocate
-	call	cyjon_page_clear
-
-	pop	rax
-
-	mov	qword [rax],	rdi
-
-.in_page:
-	cmp	word [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	VARIABLE_EMPTY
-	jne	.next_record
-
-	; pobierz dostępny identyfikator procesu
-	mov	rax,	qword [variable_multitasking_pid_value_next]
-
-	; zachowaj
-	push	rax
-
-	; szukaj nastepnego wolnego
-	inc	rax
-
-	push	rax
-
-	; sprawdź czy numer procesu jest dozwolony (modulo ROZMIAR_STRONY != 0)
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE
-	xor	rdx,	rdx
-	div	rcx
-
-	cmp	rdx,	VARIABLE_EMPTY
-	jne	.pid
-
-	; następny
-	inc	qword [rsp]
-
-.pid:
-	; zapisz
-	pop	qword [variable_multitasking_pid_value_next]
-
-	; przywróć
-	pop	rax
-
-	; ======================================================================
+	; przywróć aktualny dostępny numer PID
+	mov	rax,	rbx
 
 	; zapisz PID procesu do rekordu
 	stosq
 
 	; zapisz CR3 procesu
-	xchg	rax,	qword [rsp]
+	mov	rax,	r11
 	stosq
-
-	push	rdi
-	sub	qword [rsp],	0x10	; - 2xSTOSQ
 
 	; zapisz adres szczytu stosu kontekstu procesu do rekordu
-	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - (21 * 0x08)
+	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - (21 * VARIABLE_QWORD_SIZE )
 	stosq
 
-	; ustaw flagę rekordu na wykorzystany/zajęty
-	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE
+	; ustaw flagę rekordu na aktywny
+	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE | STATIC_SERPENTINE_RECORD_FLAG_DAEMON
 	stosq
 
-	; ustaw wskaźnik do nazwy pliku
-	mov	rsi,	qword [rsp + 0x28]
-
-	; rozmiar nazwy pliku
-	mov	rcx,	qword [rsp + 0x38]
-
-	; załaduj nazwe procesu do rekordu
-	rep	movsb
-
-	; przywróć adres rekordu
-	pop	rbx
-
-	cmp	qword [rsp + 0x28],	VARIABLE_EMPTY
-	je	.no_args
-
-	; przygotuj miejsce pod argumenty
-	call	cyjon_page_allocate
-	call	cyjon_page_clear
-
-	; zapisz adres wskaźnika przesłanych argumentów
-	mov	qword [rbx + VARIABLE_TABLE_SERPENTINE_RECORD.ARGS],	rdi
-
-	mov	rsi,	qword [rsp + 0x18]	; rdi
-	mov	rcx,	qword [rsp + 0x28]	; rdx
-
-	; zapisz rozmiar listy argumentów
-	mov	qword [rdi],	rcx
-	add	rdi,	0x08
-
-.args:
-	mov	al,	byte [rsi]
-	mov	byte [rdi],	al
-	add	rsi,	VARIABLE_INCREMENT
-	add	rdi,	VARIABLE_INCREMENT
-	sub	rcx,	VARIABLE_DECREMENT
-	jnz	.args
-
-.no_args:
 	; zwiększ ilość rekordów/procesów przechowywanych w tablicy
 	inc	qword [variable_multitasking_serpentine_record_counter]
 
-	; zwróć informacje o numerze identyfikatora uruchomionego procesu
-	pop	rcx
+	; załaduj nazwę demona do rekordu serpentyny
+	mov	rcx,	qword [rsp + 0x28]
+	mov	rsi,	qword [rsp + 0x18]
+	rep	movsb
+
+	; zwróć
+	mov	rcx,	rbx
 
 .end:
 	; przywróć oryginalne rejestry
@@ -296,7 +267,131 @@ cyjon_process_init:
 	pop	rdi
 	pop	rsi
 	pop	rdx
-	add	rsp,	0x08
+	pop	rbx
+	pop	rax
+
+	; powrót z procedury
+	ret
+
+cyjon_process_init_phase_0:
+	; przygotuj miejsce dla tablicy PML4
+	call	cyjon_page_allocate
+
+	; zachowaj adres tablicy PML4
+	mov	r11,	rdi
+
+	; kopiuj zawartość tablicy PML4 jądra do tablicy PML4
+	mov	rsi,	cr3	; tablica PML4 jądra systemu
+	mov	rcx,	512	; 512 rekordów
+	rep	movsq	; kopiuj
+
+	; usuń stos kontekstu jądra, zostanie utworzony nowy
+	mov	qword [r11 + 0x07F8],	VARIABLE_EMPTY
+
+	; utwórz stos kontekstu demona
+	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - 0x1000	; ostatnie 4 KiB Low Memory
+	mov	rcx,	1	; jedna strona o rozmiarze 4 KiB
+	mov	rbx,	0x03	; ustaw flagi 4 KiB, Administrator, 4 KiB, Odczyt/Zapis, Dostępna
+	call	cyjon_page_map_logical_area	; wykonaj
+
+	; odłóż na stos kontekstu demona spreparowane dane powrotu z planisty
+	mov	rdi,	qword [r8]
+	and	di,	0xFFF0	; usuń właściwości strony z adresu
+
+	; wyczyść stos kontekstu demona
+	call	cyjon_page_clear
+
+	; przesuń wskaźnik na spreparowany wskaźnik szczytu stosu kontekstu demona
+	add	rdi,	0x1000 - ( 5 * 0x08 )
+
+	; powrót z procedurya
+	ret
+
+cyjon_process_init_phase_1:
+	; przywróć adres tablicy PML4 demona
+	mov	rax,	r11
+
+	; znajdź wolny rekord w serpentynie
+	mov	rdi,	qword [variable_multitasking_serpentine_start_address]
+
+	; poszukiwana flaga rekordu w serpentynie
+	xor	bx,	bx
+
+.next:
+	; przesuń na następny rekord
+	add	rdi,	VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+
+	; koniec rekordów w części serpentyny?
+	mov	cx,	di
+	and	cx,	0x0FFF
+	cmp	cx,	0x0FF8
+	jne	.in_page
+
+	; zładuj adres kolejnej części/strony serpentyny
+	mov	rcx,	qword [rdi]
+
+	; koniec serpentyny?
+	cmp	rcx,	qword [variable_multitasking_serpentine_start_address]
+	jne	.not_at_end
+
+	; rozszerz serpentynę
+
+	; zachowaj wskaźnik aktualnego końca serpentyny
+	mov	rdx,	rdi
+
+	; przygotuj miejsce na kolejną część/stronę
+	call	cyjon_page_allocate
+	call	cyjon_page_clear
+
+	; pobierz adres początku serpentyny
+	mov	rcx,	qword [variable_multitasking_serpentine_start_address]
+	; zachowaj adres na końcu nowej części/strony serpentyny
+	mov	qword [rdi + VARIABLE_MEMORY_PAGE_SIZE - 0x08],	rcx
+
+	; załaduj na koniec starej części/strony serpentyny adres nowej części
+	mov	qword [rdx],	rdi
+	; zwróć adres nowego rekordu
+	mov	rdi,	rdx
+
+.not_at_end:
+	; pobierz adres nestępnej części/strony serpentyny
+	mov	rdi,	qword [rdi]
+
+.in_page:
+	; sprawdź czy rekord jest niedostepny
+	cmp	qword [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	VARIABLE_EMPTY
+	jne	.next	; jeśli zajęty
+
+.found:
+	; pobierz dostępny identyfikator demona
+	mov	rax,	qword [variable_multitasking_pid_value_next]
+
+	; zachowaj numer aktualnego wolnego numeru PID
+	push	rax
+
+	; szukaj nastepnego wolnego
+	inc	rax
+
+	; zachowaj numer następnego wolnego numeru PID
+	push	rax
+
+	; sprawdź czy numer procesu jest dozwolony
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE
+	xor	rdx,	rdx
+	div	rcx
+
+	; modulo ROZMIAR_STRONY != 0
+	cmp	rdx,	VARIABLE_EMPTY
+	jne	.pid
+
+	; następny
+	inc	qword [rsp]
+
+.pid:
+	; zapisz następny wolny numer PID
+	pop	qword [variable_multitasking_pid_value_next]
+
+	; przywróć numer procesu
 	pop	rbx
 
 	; powrót z procedury

@@ -11,12 +11,9 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-; 64 bitowy kod programu
-[BITS 64]
-
 variable_keyboard_semaphore					db	VARIABLE_FALSE
-variable_keyboard_capslock_semaphore				db	VARIABLE_FALSE
-variable_keyboard_shift_semaphore				db	VARIABLE_FALSE
+variable_keyboard_semaphore_capslock				db	VARIABLE_FALSE
+variable_keyboard_semaphore_shift				db	VARIABLE_FALSE
 
 variable_keyboard_key_special					db	VARIABLE_EMPTY
 variable_keyboard_matrix_active					dq	VARIABLE_EMPTY
@@ -29,6 +26,9 @@ variable_keyboard_matrix_high					db	0x00, 0x1B, "!@#$%^&*()_+", 0x08, 0x09, "QW
 variable_keyboard_cache	times	VARIABLE_KEYBOARD_CACHE_SIZE	dw	VARIABLE_EMPTY	; bufor
 variable_keyboard_cache_keys					db	VARIABLE_EMPTY
 
+; 64 bitowy kod programu
+[BITS 64]
+
 ;===============================================================================
 ; procedura ustawia domyślną macierz klawiszy (małe znaki)
 ; IN:
@@ -40,12 +40,18 @@ variable_keyboard_cache_keys					db	VARIABLE_EMPTY
 keyboard:
 	; zachowaj oryginalne rejestry
 	push	rax
+	push	rcx
 
 	; ustaw standardową macierz klawiatury
 	mov	rax,	variable_keyboard_matrix_low
 	mov	qword [variable_keyboard_matrix_active],	rax
 
+	; włącz przerwanie sprzętowe klawiatury
+	mov	cx,	1
+	call	cyjon_programmable_interrupt_controller_enable_irq
+
 	; przywróć oryginalne rejestry
+	pop	rcx
 	pop	rax
 
 	; powrót z procedury
@@ -122,7 +128,7 @@ keyboard_key_shift_or_capslock:
 	ret
 
 .press_capslock:
-	cmp	byte [variable_keyboard_capslock_semaphore],	VARIABLE_TRUE
+	cmp	byte [variable_keyboard_semaphore_capslock],	VARIABLE_TRUE
 	jne	.press_capslock_continue
 
 	; naciśnięto znak ":"
@@ -147,10 +153,10 @@ keyboard_key_shift_or_capslock:
 
 .press:
 	; wyłącz klawisz CAPSLOCK, gdy naciśnięty jest SHIFT
-	mov	byte [variable_keyboard_capslock_semaphore],	VARIABLE_TRUE
+	mov	byte [variable_keyboard_semaphore_capslock],	VARIABLE_TRUE
 
 	; przytrzymanie klawisza?
-	cmp	byte [variable_keyboard_shift_semaphore],	VARIABLE_TRUE
+	cmp	byte [variable_keyboard_semaphore_shift],	VARIABLE_TRUE
 	je	.press_end
 
 	cmp	qword [variable_keyboard_matrix_active],	variable_keyboard_matrix_low
@@ -181,9 +187,9 @@ keyboard_key_shift_or_capslock:
 
 .release:
 	; włącz obsługę klawisza CAPSLOCK
-	mov	byte [variable_keyboard_capslock_semaphore],	VARIABLE_FALSE
+	mov	byte [variable_keyboard_semaphore_capslock],	VARIABLE_FALSE
 	; włącz klawisz SHIFT
-	mov	byte [variable_keyboard_shift_semaphore],	VARIABLE_FALSE
+	mov	byte [variable_keyboard_semaphore_shift],	VARIABLE_FALSE
 
 	cmp	qword [variable_keyboard_matrix_active],	variable_keyboard_matrix_low
 	jne	.release_another

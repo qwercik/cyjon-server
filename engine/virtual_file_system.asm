@@ -11,33 +11,72 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
+; struktura SuperBloku wirtualnego systemu plików jądra systemu
+struc virtual_file_system_superblock
+	.s_all_blocks_count	resq	1
+	.s_fs_blocks_count	resq	1
+
+	.s_knots_table		resq	1
+	.s_knots_table_size	resq	1
+endstruc
+
+; SuperBlok
+variable_virtual_file_system_superblock	times	4	dq	VARIABLE_EMPTY
+
 ; 64 bitowy kod programu
 [BITS 64]
 
-struc virtual_file_system_superblock
-	.s_all_blocks_count		resq	1
-	.s_fs_blocks_count		resq	1
-
-	.s_knots_table			resq	1
-	.s_knots_table_size		resq	1
-endstruc
-
-variable_partition_specification_system	times	4	dq	VARIABLE_EMPTY
-
-virtual_file_systems:
+;===============================================================================
+; tworzy strukture wirtualnego systemu plików
+; IN:
+;	brak
+; OUT:
+;	brak
+;
+; wszystkie rejestry zachowane
+virtual_file_system:
 	; zachowaj oryginalne rejestry
-	push	r8
+	push	rbx
+	push	rcx
+	push	rdx
+	push	rsi
+	push	rdi
 
-	; inicjalizuj wirtualny system plików dla systemu
-	mov	r8,	variable_partition_specification_system
-	call	virtual_file_system_initialization
+	; przygotuj czyste miejsce na tablice supłów
+	call	cyjon_page_allocate
+	call	cyjon_page_clear
 
-	; inicjalizuj wirtualny system plików dla użytkownika
-	mov	r8,	variable_partition_specification_home
-	call	virtual_file_system_initialization
+	; aktualny rozmiar nośnika w blokach
+	mov	qword [variable_virtual_file_system_superblock],	1	; tablica supłów
+
+	; rozmair systemu plików w blokach
+	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_fs_blocks_count],	1
+
+	; zapisz adres tablicy supłów
+	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table],	rdi
+
+	; rozmiar tablicy supłów w blokach
+	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table_size],	1
+
+	; wyświetl informację o utworzeniu wirtualnego systemu plików
+	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	cl,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_caution
+	call	cyjon_screen_print_string
+
+	mov	bl,	VARIABLE_COLOR_DEFAULT
+	mov	cl,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_vfs_ready
+	call	cyjon_screen_print_string
 
 	; przywróć oryginalne rejestry
-	pop	r8
+	pop	rdi
+	pop	rsi
+	pop	rdx
+	pop	rcx
+	pop	rbx
 
 	; powrót z procedury
 	ret
@@ -49,7 +88,7 @@ virtual_file_systems:
 ;	rdx - rozmiar pliku w Bajtach
 ;	rdi - wskaźnik przechowywania pliku w pamięci
 ;	rsi - wskaźnik do nazwy pliku
-;	r8 - specyfikacja systemu plików
+;
 ; OUT:
 ;	brak
 ;
@@ -202,7 +241,8 @@ cyjon_virtual_file_system_save_file:
 ;===============================================================================
 ; procedura wyszukuje w katalogu głównym wolnego supła/węzła dla pliku
 ; IN:
-;	r8 - specyfikacja systemu plików
+;	brak
+;
 ; OUT:
 ;	rdi - adres bezwzględny znalezionego wolnego supła
 ;
@@ -212,7 +252,7 @@ cyjon_virtual_file_system_find_free_knot:
 	push	rcx
 
 	; załaduj adres poczatku tablicy supłów
-	mov	rdi,	qword [r8 + virtual_file_system_superblock.s_knots_table]
+	mov	rdi,	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table]
 
 .prepare:
 	; ilość rekordów na blok
@@ -262,40 +302,6 @@ cyjon_virtual_file_system_find_free_knot:
 	ret
 
 ;===============================================================================
-; procedura tworzy nowy system plików
-; IN:
-;	r8 - adres tablicy specyfikacji systemu plików
-; OUT:
-;	brak
-;
-; wszystkie rejestry zachowane
-virtual_file_system_initialization:
-	; zachowaj oryginalne rejestry
-	push	rdi
-
-	; przygotuj muejsce na tablice supłów
-	call	cyjon_page_allocate
-	call	cyjon_page_clear
-
-	; aktualny rozmiar nośnika w blokach
-	mov	qword [r8],	1	; tablica supłów
-
-	; rozmair systemu plików w blokach
-	mov	qword [r8 + virtual_file_system_superblock.s_fs_blocks_count],	1
-
-	; zapisz adres tablicy supłów
-	mov	qword [r8 + virtual_file_system_superblock.s_knots_table],	rdi
-
-	; rozmiar tablicy supłów w blokach
-	mov	qword [r8 + virtual_file_system_superblock.s_knots_table_size],	1
-
-	; przywróć oryginalne rejestry
-	pop	rdi
-
-	; powrót z procedury
-	ret
-
-;===============================================================================
 ; procedura ładuje zawartość pliku do pamięci
 ; IN:
 ;	rsi - numer pierwszego bloku danych pliku
@@ -338,11 +344,11 @@ cyjon_virtual_file_system_read_file:
 	ret
 
 ;===============================================================================
-; procedura przeszukuje katalogłówny systemu plików za wskazaną nazwą pliku
+; procedura przeszukuje katalog główny systemu plików za wskazaną nazwą pliku
 ; IN:
 ;	rcx - ilość znaków w nazwie pliku
 ;	rsi - ciąg znaków reprezentujący nazwę pliku
-;	r8 - specyfikacja systemu plików
+;
 ; OUT:
 ;	rdi - adres rekordu opisującego plik
 ;
@@ -359,7 +365,7 @@ cyjon_virtual_file_system_find_file:
 	; wyzeruj numer rekordu
 
 	; załaduj adres poczatku tablicy supłów
-	mov	rdi,	qword [r8 + virtual_file_system_superblock.s_knots_table]
+	mov	rdi,	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table]
 
 .prepare:
 	; ilość rekordów na blok

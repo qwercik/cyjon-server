@@ -124,14 +124,11 @@ times	436 - ( $ - $$ )	db	VARIABLE_EMPTY
 ; uzupełniamy niewykorzystaną przestrzeń
 times	510 - ( $ - $$ )	db	VARIABLE_EMPTY
 
-; znacznik sektora rozruchowego	
+; znacznik sektora rozruchowego
 dw	0xAA55	; czysta magija
 
 ; dołącz program rozruchowy
 incbin	"build/stage2.bin"
 
-; na systemach z rodziny MS/Windows, oprogramowanie Bochs wymaga obrazu dysku o rozmiarze > 1MiB i wyrównanego do pełnego sektora (512 Bajtów)
+; na systemach z rodziny MS/Windows, oprogramowanie Bochs wymaga obrazu dysku o rozmiarze >= 1MiB i wyrównanego do pełnego sektora (512 Bajtów)
 times	512 * 2048 - ( $ - $$ )	db	0x00
-
-; dołącz partycję
-incbin	"build/empty_ext4.raw"
