@@ -156,159 +156,6 @@ cyjon_page_find_free_memory_physical:
 	; powrót z procedury
 	ret
 
-;=======================================================================
-; procedura wyszukuje i rezerwuje przestrzeń o podanym rozmiarze (ilość stron) w przestrzeni logicznej
-; IN:
-;	rcx	- ilość stron do zarezerwowania
-; OUT:
-;	rdi	- adres przestrzeni zarezerwowanej o podanym rozmiarze
-;
-; pozostałe rejestry zachowane
-cyjon_page_find_free_memory:
-	; zachowaj oryginalne rejestry
-	push	rax
-	push	rbx
-	push	rcx
-	push	r8
-	push	r9
-	push	r10
-	push	r11
-	push	r12
-	push	r13
-	push	r14
-	push	r15
-
-	; początek przestrzeni przeszukiwanej
-	mov	rax,	VARIABLE_MEMORY_FREE_LOGICAL_ADDRESS
-
-	; właściwości rejestrowanej przestrzeni
-	mov	bx,	0x07	; flagi Administrator, Odczyt/Zapis, Dostępna
-
-	; adres tablicy PML4 jądra
-	mov	r11,	cr3
-
-	; przygotuj procedure
-	call	cyjon_page_prepare_pml_variables
-
-	; utwórz zmienne lokalne
-	push	rdi
-	push	r8
-	push	r9
-	push	r10
-	push	r11
-	push	r12
-	push	r13
-	push	r14
-	push	r15
-
-	push	rax
-	push	rcx
-
-.loop:
-	; sprawdź czy koniec tablicy pml1
-	cmp	r12,	512
-	jb	.nope
-
-	; przygotuj przestrzeń do sprawdzenia
-	call	cyjon_page_new_pml1
-
-.nope:
-	; przesuń na następny aktualny numer rekordu
-	inc	r12
-	; przesuń na następny wskaźnik adresu rekordu w tablicy pml1
-	add	rdi,	0x08
-	; aktualizuj adres początku przestrzeni rozpatrywanej jako dostępna
-	add	rax,	0x1000
-
-	; sprawdź czy przestrzeń była nieopisana
-	cmp	qword [rdi - 0x08],	VARIABLE_EMPTY
-	jne	.restart
-
-	; szukaj dalej
-	loop	.loop
-
-.restart:
-	; przywróć oryginalny rozmiar poszukiwanej przestrzeni
-	mov	rcx,	qword [rsp]
-	; zachowaj nowy adres przestrzeni
-	mov	qword [rsp + 0x08],	rax
-
-	; aktualizuj zmienne lokalne
-	mov	qword [rsp + 0x10],	r15
-	mov	qword [rsp + 0x18],	r14
-	mov	qword [rsp + 0x20],	r13
-	mov	qword [rsp + 0x28],	r12
-	mov	qword [rsp + 0x30],	r11
-	mov	qword [rsp + 0x38],	r10
-	mov	qword [rsp + 0x40],	r9
-	mov	qword [rsp + 0x48],	r8
-	mov	qword [rsp + 0x50],	rdi
-
-	; szukaj od nowa
-	jmp	.loop
-
-	; przywróć zmienne loklane
-	pop	rcx
-	pop	rax
-
-	pop	r15
-	pop	r14
-	pop	r13
-	pop	r12
-	pop	r11
-	pop	r10
-	pop	r9
-	pop	r8
-	pop	rdi
-
-.continue:
-	; sprawdź czy znaleziono przestrzeń wolną
-	cmp	rax,	VARIABLE_EMPTY
-	je	.no
-
-	; zachowaj adres
-	push	rax
-
-	; przywróć adres tablicy PML4 jądra
-	mov	r11,	cr3
-
-	; opisz znalezioną przestrzeń
-	call	cyjon_page_map_logical_area
-
-	; wyczyść przydzieloną pamięć
-	mov	rdi,	qword [rsp]
-	shl	rcx,	12	; *4096
-	shr	rcx,	3
-	xor	rax,	rax
-	rep	stosq
-
-	; załaduj adres znalezionej i zarejestrowanej przestrzeni
-	pop	rdi
-
-	; zakończ obsługę procedury
-	jmp	.end
-
-.no:
-	; zwróć błąd
-	xor	rdi,	rdi
-
-.end:
-	; przywróć oryginalne rejestry
-	pop	r15
-	pop	r14
-	pop	r13
-	pop	r12
-	pop	r11
-	pop	r10
-	pop	r9
-	pop	r8
-	pop	rcx
-	pop	rbx
-	pop	rax
-
-	; powrót z procedury
-	ret
-
 ;===============================================================================
 ; procedura zwalnia zajętą przestrzeń fizyczną
 ; IN:
@@ -542,6 +389,17 @@ cyjon_page_allocate:
 	; przeszukaj binarną tablicę za dostępnym bitem
 	call	library_find_free_bit
 
+	; sprawdź kod błędu
+	cmp	rax,	VARIABLE_FULL
+	jne	.found
+
+	; nie znalziono wolnej strony
+	xor	rdi,	rdi
+
+	; koniec
+	jmp	.end
+
+.found:
 	; załaduj znaleziony bit
 	mov	rdi,	rax
 
@@ -713,6 +571,8 @@ cyjon_page_map_physical_area:
 
 	; przygotuj procedure
 	call	cyjon_page_prepare_pml_variables
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.end
 
 	; zapamiętaj właściwości
 	mov	rdx,	rbx
@@ -786,12 +646,26 @@ cyjon_page_map_physical_area:
 ;	r14	- numer kolejnego wolnego rekordu w tablicy PML3
 ;	r15	- numer kolejnego wolnego rekordu w tablicy PML4
 ;
+; OR OUT:
+;	rdi	- VARIABLE_EMPTY jeśli brak wolnej pamięci
+;
 ; pozostałe rejestry zachowane
+align	0x0100	; debug
 cyjon_page_prepare_pml_variables:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rcx
 	push	rdx
+
+	; jeśli brak dostępnej przestrzeni, rejestry zostaną przywrócone
+	push	r8
+	push	r9
+	push	r10
+	push	r11
+	push	r12
+	push	r13
+	push	r14
+	push	r15
 
 	; oblicz numer rekordu w tablicy PML4 na podstawie otrzymanego adresu fizycznego/logicznego
 	mov	rcx,	0x0000008000000000	; 512 GiB
@@ -825,7 +699,11 @@ cyjon_page_prepare_pml_variables:
 
 .no_pml3:
 	; przygotuj miejsce na tablicę PML3
+	mov	dl,	4	; flaga/numer tablicy PML gdzie jesteśmy
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.no_memory	; brak dostępnych stron
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -878,7 +756,11 @@ cyjon_page_prepare_pml_variables:
 
 .no_pml2:
 	; przygotuj miejsce na tablicę PML2
+	mov	dl,	3	; flaga/numer tablicy PML gdzie jesteśmy
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.no_memory	; brak dostępnych stron
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -932,6 +814,10 @@ cyjon_page_prepare_pml_variables:
 .no_pml1:
 	; przygotuj miejsce na tablicę PML1
 	call	cyjon_page_allocate
+	mov	dl,	2	; flaga/numer tablicy PML gdzie jesteśmy
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.no_memory	; brak dostępnych stron
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -969,6 +855,10 @@ cyjon_page_prepare_pml_variables:
 	; załaduj wskaźnik do rekordu tablicy PML1
 	mov	rdi,	r8
 
+	; usuń kopie rejestrów (udało się zaalokować tablice PML)
+	add	rsp,	0x08 * 8
+
+.end:
 	; przywróć oryginalne rejestry
 	pop	rdx
 	pop	rcx
@@ -977,15 +867,97 @@ cyjon_page_prepare_pml_variables:
 	; powrót z procedury
 	ret
 
+.no_memory:
+	; licznik rekordów
+	mov	rcx,	512
+
+	; załaduj adres aktualnego rekordu w tablicy PML2
+	mov	rdi,	r9
+	mov	rax,	r10	; i tablicy nadrzędnej
+
+	; czy tablica PML2 jest pusta
+	cmp	dl,	2
+	je	.unallocate_pml
+
+	; załaduj adres aktualnego rekordu w tablicy PML3
+	mov	rdi,	r10
+	mov	rax,	r11	; i tablicy nadrzędnej
+
+	; czy tablica PML3 jest pusta
+	cmp	dl,	3
+	je	.unallocate_pml
+
+.no_memory_end:
+	; przywróć oryginalne rejestry
+	pop	r15
+	pop	r14
+	pop	r13
+	pop	r12
+	pop	r11
+	pop	r10
+	pop	r9
+	pop	r8
+
+	; zwróć informacje o braku odpowiedniej ilości stron by zaalokować daną przestrzeń
+	xor	rdi,	rdi
+
+	; koniec procedury
+	jmp	.end
+
+.unallocate_pml:
+	; usuń numer rekordu
+	and	di,	0xF000
+
+	; zachowaj adres
+	push	rdi
+
+.loop:
+	; rekord pusty?
+	cmp	qword [rdi],	VARIABLE_EMPTY
+	je	.empty
+
+	; usuń zmienną lokalną
+	pop	rdi
+
+	; tablica zawiera nieznane rekordy, brak możliwości zwolnienia strony
+	jmp	.no_memory_end
+
+.empty:
+	loop	.loop
+
+	; przywróć adres
+	pop	rdi
+
+	; zwolnij stronę
+	call	cyjon_page_release
+
+	; usuń rekord z tablicy nadrzędnej
+	mov	qword [rax],	VARIABLE_EMPTY
+
+	; kontynuuj z następną tablicą
+	inc	dl
+	jmp	.no_memory
+
 ;=======================================================================
 ; PODPROCEDURA tworzy nową tablicę PML1 o podanym adresie logicznym
 ; IN:
 ;	rax	- adres przestrzeni fizycznej/logicznej do opisania
 ;	rbx	- właściwości rekordów/stron
-;	r11	- adres fizyczny tablicy PML4 jądra/procesu
+;
+;	r8	- wskaźnik kolejnego wolnego rekordu w tablicy PML1
+;	r9	- wskaźnik kolejnego wolnego rekordu w tablicy PML2
+;	r10	- wskaźnik kolejnego wolnego rekordu w tablicy PML3
+;	r11	- wskaźnik kolejnego wolnego rekordu w tablicy PML4
+;
+;	r12	- numer kolejnego wolnego rekordu w tablicy PML1
+;	r13	- numer kolejnego wolnego rekordu w tablicy PML2
+;	r14	- numer kolejnego wolnego rekordu w tablicy PML3
+;	r15	- numer kolejnego wolnego rekordu w tablicy PML4
+;
 ; OUT:
 ;	rdi	- wskaźnik rekordu w tablicy PML1 względem otrzymanego adresu fizycznego/logicznego
 ;
+; IF CHANGED:
 ;	r8	- wskaźnik kolejnego wolnego rekordu w tablicy PML1
 ;	r9	- wskaźnik kolejnego wolnego rekordu w tablicy PML2
 ;	r10	- wskaźnik kolejnego wolnego rekordu w tablicy PML3
@@ -1027,7 +999,7 @@ cyjon_page_new_pml1:
 
 	; sprawdź czy zaalokowano stronę
 	cmp	rdi,	VARIABLE_EMPTY
-	je	.error
+	je	.no_memory
 
 	; wyczyść stronę
 	call	cyjon_page_clear
@@ -1087,7 +1059,7 @@ cyjon_page_new_pml1:
 
 	; sprawdź czy zaalokowano stronę
 	cmp	rdi,	VARIABLE_EMPTY
-	je	.error
+	je	.no_memory
 
 	; wyczyść stronę
 	call	cyjon_page_clear
@@ -1144,7 +1116,7 @@ cyjon_page_new_pml1:
 
 	; sprawdź czy zaalokowano stronę
 	cmp	rdi,	VARIABLE_EMPTY
-	je	.error
+	je	.no_memory
 
 	; wyczyść stronę
 	call	cyjon_page_clear
@@ -1171,8 +1143,8 @@ cyjon_page_new_pml1:
 	; kontynuuj
 	jmp	.pml3
 
-.error:
-	jmp	$
+.no_memory:
+	
 
 .pml4_panic:
 	; tablica PML4 została przepełniona, błąd krytyczny jądra systemu

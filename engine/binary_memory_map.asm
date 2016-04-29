@@ -109,7 +109,7 @@ binary_memory_map:
 	mov	qword [variable_binary_memory_map_free_pages],	rax
 
 	; przelicz liczbę stron na ilość "pakietów" po 64 bity, każdy
-	shr	rax,	6	; / 64
+	shr	rax,	VARIABLE_DIVIDE_BY_64
 
 	; wyliczamy pozycję naszej nowej binarnej mapy pamięci
 	; ustawimy ją za kodem jądra systemu
@@ -170,6 +170,7 @@ binary_memory_map:
 	call	cyjon_screen_print_string
 
 	mov	rax,	qword [variable_binary_memory_map_free_pages]
+	shl	rax,	VARIABLE_MULTIPLE_BY_4	; KiB
 	mov	bl,	VARIABLE_COLOR_WHITE
 	mov	cx,	0x000A	; brak cyfr wiodących, system dziesiętny
 	call	cyjon_screen_print_number

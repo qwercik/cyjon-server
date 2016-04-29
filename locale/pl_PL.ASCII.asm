@@ -8,7 +8,7 @@
 ;	Andrzej (akasei) Adamczyk [e-mail: akasei from wataha.net]
 ;-------------------------------------------------------------------------------
 
-%define	VARIABLE_PANIC	'VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, "System wstrzymany.", VARIABLE_ASCII_CODE_TERMINATOR'
+%define	VARIABLE_PANIC	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, "System wstrzymany.", VARIABLE_ASCII_CODE_TERMINATOR
 
 ; Use:
 ; nasm - http://www.nasm.us/
