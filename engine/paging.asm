@@ -11,7 +11,10 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-variable_page_semaphore						db	VARIABLE_EMPTY
+; zablokuj dostęp do modyfikacji pamięci
+variable_page_semaphore						db	VARIABLE_FALSE
+; zablokuj dostęp do Binarnej Mapy Pamięci
+variable_page_allocate_semaphore				db	VARIABLE_FALSE
 
 ; adres tablicy stronicowania PML4 jądra systemu
 variable_page_pml4_address					dq	VARIABLE_EMPTY
@@ -44,7 +47,7 @@ cyjon_page_find_free_memory_physical:
 	; zablokuj dostęp do rezerwacji stron
 	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
 
-	; sprawdź czy przedopodobnie istnieje możliwość zarezerowania podanej przestrzeni
+	; sprawdź czy istnieje możliwość zarezerowania podanej przestrzeni (jeśli nie jest pofragmentowana)
 	cmp	qword [variable_binary_memory_map_free_pages],	rcx
 	jb	.no_memory
 
@@ -368,11 +371,11 @@ cyjon_page_allocate:
 
 .wait:
 	; sprawdź czy binarna mapa pamięci jest dostępna do modyfikacji
-	cmp	byte [variable_page_semaphore],	VARIABLE_TRUE
+	cmp	byte [variable_page_allocate_semaphore],	VARIABLE_TRUE
 	je	.wait	; nie, czekaj na zwolnienie
 
 	; zarezerwuj binarną mapę pamięci dla siebie
-	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
+	mov	byte [variable_page_allocate_semaphore],	VARIABLE_TRUE
 
 	; sprawdź czy istnieją dostępne strony
 	cmp	qword [variable_binary_memory_map_free_pages],	VARIABLE_EMPTY
@@ -412,7 +415,7 @@ cyjon_page_allocate:
 
 .end:
 	; zwolnij dostęp do binarnej mapy pamięci
-	mov	byte [variable_page_semaphore],	VARIABLE_EMPTY
+	mov	byte [variable_page_allocate_semaphore],	VARIABLE_EMPTY
 
 	; przywróć oryginalne rejestry i flagi
 	popf
@@ -510,11 +513,11 @@ cyjon_page_release:
 
 .wait:
 	; czekaj na zwolnienie binarnej mapy pamięci
-	cmp	byte [variable_page_semaphore],	VARIABLE_EMPTY
+	cmp	byte [variable_page_allocate_semaphore],	VARIABLE_EMPTY
 	jne	.wait
 
 	; zarezerwuj binarną mapę pamięci
-	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
+	mov	byte [variable_page_allocate_semaphore],	VARIABLE_TRUE
 
 	; pobierz zestaw 64 bitów z binarnej mapy pamięci
 	mov	rax,	qword [rdi]
@@ -528,7 +531,7 @@ cyjon_page_release:
 	inc	qword [variable_binary_memory_map_free_pages]
 
 	; zwolnij binarną mapę pamięci
-	mov	byte [variable_page_semaphore],	VARIABLE_EMPTY
+	mov	byte [variable_page_allocate_semaphore],	VARIABLE_EMPTY
 
 	; przywróć oryginalne rejestry i flagi
 	popf
@@ -555,9 +558,7 @@ cyjon_page_release:
 ; wszystkie rejestry zachowane
 cyjon_page_map_physical_area:
 	; zachowaj oryginalne rejestry
-	push	rax
 	push	rbx
-	push	rcx
 	push	rdx
 	push	rdi
 	push	r8
@@ -568,6 +569,27 @@ cyjon_page_map_physical_area:
 	push	r13
 	push	r14
 	push	r15
+	push	rcx
+	push	rax
+
+.wait:
+	; sprawdź czy binarna mapa pamięci jest dostępna do modyfikacji
+	cmp	byte [variable_page_semaphore],	VARIABLE_TRUE
+	je	.wait	; nie, czekaj na zwolnienie
+
+	; zarezerwuj binarną mapę pamięci dla siebie
+	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
+
+	; oblicz wymaganą ilość wolnych stron do opisania przestrzeni
+	call	cyjon_page_calculate_requirements
+
+	; sprawdź czy istnieje odpowiednia ilość 
+	cmp	qword [variable_binary_memory_map_free_pages],	rcx
+	jb	.no_memory
+
+	; przywróć oryginalne rejestry
+	pop	rax
+	mov	rcx,	qword [rsp]
 
 	; przygotuj procedure
 	call	cyjon_page_prepare_pml_variables
@@ -587,6 +609,7 @@ cyjon_page_map_physical_area:
 
 	; utwórz nową tablicę pml1
 	call	cyjon_page_new_pml1
+	cmp	rdi,	VARIABLE_EMPTY
 
 .ok:
 	; załaduj adres i właściwości ramki do akumulatora
@@ -608,8 +631,15 @@ cyjon_page_map_physical_area:
 	; kontynuuj
 	loop	.record
 
+	; przestrzeń została opisana
+	xor	rax,	rax
+
 .end:
+	; zarezerwuj binarną mapę pamięci dla siebie
+	mov	byte [variable_page_semaphore],	VARIABLE_FALSE
+
 	; przywróć oryginalne rejestry
+	pop	rcx
 	pop	r15
 	pop	r14
 	pop	r13
@@ -620,13 +650,82 @@ cyjon_page_map_physical_area:
 	pop	r8
 	pop	rdi
 	pop	rdx
-	pop	rcx
 	pop	rbx
-	pop	rax
 
 	; powrót z procedury
 	ret
 
+.no_memory:
+	; usuń zmienną z stosu
+	add	rsp,	VARIABLE_QWORD_SIZE
+
+	; brak wolnej pamięci
+	mov	rax,	VARIABLE_TRUE
+
+	; koniec
+	jmp	.end
+
+;===============================================================================
+; procedura oblicza ilość wymaganych stron do opisania N stron
+; IN:
+;	rax	- ilość stron do opisania
+;
+; OUT:
+;	rcx	- wynik
+;
+; pozostałe rejestry zachowane
+cyjon_page_calculate_requirements:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rdx
+
+	cmp	rcx,	512 * 512	; 1 GiB
+	jb	.no_above_1GiB
+
+	mov	rax,	512 * 512
+
+	; sprawdź dostępność
+	jmp	.calculated
+
+.no_above_1GiB:
+	cmp	rcx,	512	; 2 MiB
+	jb	.no_above_2MiB
+
+	mov	rax,	512
+
+	; sprawdź dostępność
+	jmp	.calculated
+
+.no_above_2MiB:
+	; na zarejestrowanie 1 ramki potrzeba min. 3 tablic PML + 3 tablice PML jeśli przekroczy zakres tablicy PML1
+	add	rcx,	3 + 3
+
+.calculated:
+	; oblicz wielokrotność "kawałków"
+	xchg	rax,	rcx
+	xor	rdx,	rdx
+	div	rcx
+
+	; "zaokrąglij" w górę
+	inc	rax
+
+	; oblicz ilość wymaganych tablic PML do opisania przestrzeni
+	mov	rcx,	3
+	xor	rdx,	rdx
+	mul	rcx
+
+	; 3 tablice PML jeśli przekroczy zakres tablicy PML1
+	add	rax,	3
+
+	; zwróć wynik
+	mov	rcx,	rax
+
+	; przywróć oryginalne rejestry
+	pop	rdx
+	pop	rax
+
+	; powrót z procedury
+	ret
 ;=======================================================================
 ; procedura przygotowuje niezbędne informacje o tablicach PML[4,3,2,1]
 ; IN:
@@ -650,7 +749,6 @@ cyjon_page_map_physical_area:
 ;	rdi	- VARIABLE_EMPTY jeśli brak wolnej pamięci
 ;
 ; pozostałe rejestry zachowane
-align	0x0100	; debug
 cyjon_page_prepare_pml_variables:
 	; zachowaj oryginalne rejestry
 	push	rax
