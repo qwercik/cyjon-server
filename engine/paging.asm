@@ -577,7 +577,7 @@ cyjon_page_map_physical_area:
 	cmp	byte [variable_page_semaphore],	VARIABLE_TRUE
 	je	.wait	; nie, czekaj na zwolnienie
 
-	; zarezerwuj binarną mapę pamięci dla siebie
+	; zarezerwuj binarną mapę pamięci
 	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
 
 	; oblicz wymaganą ilość wolnych stron do opisania przestrzeni
@@ -635,7 +635,7 @@ cyjon_page_map_physical_area:
 	xor	rax,	rax
 
 .end:
-	; zarezerwuj binarną mapę pamięci dla siebie
+	; zwolnij binarną mapę pamięci
 	mov	byte [variable_page_semaphore],	VARIABLE_FALSE
 
 	; przywróć oryginalne rejestry
@@ -1257,13 +1257,12 @@ cyjon_page_new_pml1:
 ;	rcx	- ilość ramek do opisania
 ;	r11	- adres fizyczny tablicy PML4 jądra/procesu
 ; OUT:
+;	rax	- kod błędu, ZERO jeśli OK
 ;	r8	- adres ostatnio mapowanej strony z tablicy PML1
 ;
 ; pozostałe rejestry zachowane
 cyjon_page_map_logical_area:
 	; zachowaj oryginalne rejestry
-	push	rax
-	push	rcx
 	push	rdi
 	push	r9
 	push	r10
@@ -1272,6 +1271,28 @@ cyjon_page_map_logical_area:
 	push	r13
 	push	r14
 	push	r15
+	push	rcx
+
+.wait:
+	; sprawdź czy binarna mapa pamięci jest dostępna do modyfikacji
+	cmp	byte [variable_page_semaphore],	VARIABLE_TRUE
+	je	.wait	; nie, czekaj na zwolnienie
+
+	; zarezerwuj binarną mapę pamięci
+	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
+
+	; oblicz wymaganą ilość wolnych stron do opisania przestrzeni
+	call	cyjon_page_calculate_requirements
+
+	; dodaj rozmiar przestrzeni
+	add	rcx,	qword [rsp]
+
+	; sprawdź czy istnieje odpowiednia ilość 
+	cmp	qword [variable_binary_memory_map_free_pages],	rcx
+	jb	.no_memory
+
+	; przywróć oryginalny rejestr
+	mov	rcx,	qword [rsp]
 
 	; przygotuj zmienne
 	call	cyjon_page_prepare_pml_variables
@@ -1326,8 +1347,15 @@ cyjon_page_map_logical_area:
 	; opisz następne strony w tablicy PML1
 	loop	.loop
 
+	; przydzielono pamięć
+	xor	rax,	rax
+
 .end:
+	; zwolnij binarną mapę pamięci
+	mov	byte [variable_page_semaphore],	VARIABLE_FALSE
+
 	; przywróć oryginalne rejestry
+	pop	rcx
 	pop	r15
 	pop	r14
 	pop	r13
@@ -1336,8 +1364,13 @@ cyjon_page_map_logical_area:
 	pop	r10
 	pop	r9
 	pop	rdi
-	pop	rcx
-	pop	rax
 
 	; powrót z procedury
 	ret
+
+.no_memory:
+	; brak dostępnej ilości pamięci
+	mov	rax,	VARIABLE_TRUE
+
+	; koniec
+	jmp	.end
