@@ -42,8 +42,17 @@ virtual_file_system:
 	push	rsi
 	push	rdi
 
-	; przygotuj czyste miejsce na tablice supłów
+	; przygotuj miejsce na tablice supłów
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	ja	.ok
+
+	; błąd krytyczny
+	mov	rsi,	text_vfs_fail
+	jmp	cyjon_screen_kernel_panic
+
+.ok:
+	; wyczyść
 	call	cyjon_page_clear
 
 	; aktualny rozmiar nośnika w blokach
@@ -135,7 +144,14 @@ cyjon_virtual_file_system_save_file:
 
 	; pobierz adres pierwszego wolnego bloku/strony
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	jne	.page0_ok
 
+	; błąd krytyczny
+	mov	rsi,	text_vfs_no_memory
+	jmp	cyjon_screen_kernel_panic
+
+.page0_ok:
 	; ustaw na swoje miejsca
 	xchg	rdi,	rax
 
@@ -176,6 +192,14 @@ cyjon_virtual_file_system_save_file:
 
 	; zaalokuj następny blok pod dane pliku
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	jne	.page1_ok
+
+	; błąd krytyczny
+	mov	rsi,	text_vfs_no_memory
+	jmp	cyjon_screen_kernel_panic
+
+.page1_ok:
 
 	; ustaw na swoje miejsca
 	xchg	rdi,	rax
@@ -285,6 +309,14 @@ cyjon_virtual_file_system_find_free_knot:
 
 	; zarezerwuj wolny blok
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	jne	.page0_ok
+
+	; błąd krytyczny
+	mov	rsi,	text_vfs_no_memory
+	jmp	cyjon_screen_kernel_panic
+
+.page0_ok:
 	; wyczyść
 	call	cyjon_page_clear
 

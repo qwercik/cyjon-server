@@ -55,6 +55,14 @@ multitasking:
 
 	; przygotuj czystą przestrzeń pod serpentynę procesów
 	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	jne	.page0_ok
+
+	; błąd krytyczny
+	mov	rsi,	text_kernel_panic_sheduler_no_memory
+	jmp	cyjon_screen_kernel_panic
+
+.page0_ok:
 	call	cyjon_page_clear
 
 	; zapamiętaj adres serpentyny

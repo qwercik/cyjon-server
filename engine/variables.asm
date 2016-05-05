@@ -39,8 +39,8 @@ struc	MMAP_STRUCTURE
 endstruc
 
 variable_idt_structure:
-	.limit							dw	VARIABLE_MEMORY_PAGE_SIZE	; rozmiar tablicy / do 512 rekordów
-	.address						dq	VARIABLE_EMPTY
+	.limit		dw	VARIABLE_MEMORY_PAGE_SIZE	; rozmiar tablicy / do 512 rekordów
+	.address	dq	VARIABLE_EMPTY
 
 ; ilość 0.001 sekundy upłyniętych od inicjalizacji jądra systemu
 variable_system_microtime					dq	VARIABLE_EMPTY

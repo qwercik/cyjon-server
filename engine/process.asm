@@ -105,12 +105,13 @@ cyjon_process_init_daemon:
 ; procedura uruchamia nowy proces, przydzielając pamięć i numer identyfikacyjny
 ; IN:
 ;	rcx - ilość znaków w nazwie pliku
-;	rdx - rozmiar danych do przetransferowania
-;	rsi - wskaźnik do nazwy pliku i danych
+;	rdx - rozmiar argumentów do przetransferowania
+;	rsi - wskaźnik do nazwy pliku i argumentów
 ; OUT:
 ;	rax - numer PID uruchomionego procesu
 ;
 ; pozostałe rejestry zachowane
+align	0x0100
 cyjon_process_init:
 	; zachowaj oryginalne rejestry
 	push	rax
@@ -157,6 +158,10 @@ cyjon_process_init:
 	mov	r11,	cr3	; tablica PML4 aktualnego procesu
 	call	cyjon_page_map_logical_area
 
+	; sprawdź kod błędu alokacji pamięci
+	cmp	rax,	VARIABLE_EMPTY
+	ja	.backward_process_init	; brak miejsca, zakończ proces uruchamiania procesu
+
 	; załaduj plik do pamięci pod przygotowaną przestrzeń
 	mov	rsi,	qword [rdi]	; numer pierwszego bloku danych pliku
 	mov	rdi,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - ( VARIABLE_MEMORY_PML4_RECORD_SIZE * 2 )
@@ -164,6 +169,11 @@ cyjon_process_init:
 
 	; przygotuj miejsce dla tablicy PML4 procesu
 	call	cyjon_page_allocate
+
+	; sprawdź czy przydzieliło stronę
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.backward_process_init	; nie, zakończ procedurę uruchamiania procesu
+
 	; załaduj tablicę PML4 procesu
 	mov	r11,	rdi
 
@@ -190,11 +200,19 @@ cyjon_process_init:
 	mov	rcx,	1	; rozmiar stosu, jedna strona (4096 Bajtów)
 	call	cyjon_page_map_logical_area	; wykonaj
 
+	; sprawdź kod błędu alokacji pamięci
+	cmp	rax,	VARIABLE_EMPTY
+	ja	.backward_process_init	; brak miejsca, zakończ proces uruchamiania procesu
+
 	; utwórz stos kontekstu procesu
 	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - VARIABLE_MEMORY_PAGE_SIZE	; ostatnie 4 KiB Low Memory
 	mov	rbx,	0x03	; ustaw flagi 4 KiB, Administrator, 4 KiB, Odczyt/Zapis, Dostępna
 	mov	rcx,	1	; jedna strona o rozmiarze 4 KiB
 	call	cyjon_page_map_logical_area	; wykonaj
+
+	; sprawdź kod błędu alokacji pamięci
+	cmp	rax,	VARIABLE_EMPTY
+	ja	.backward_process_init	; brak miejsca, zakończ proces uruchamiania procesu
 
 	; odłóż na stos kontekstu procesu spreparowane dane powrotu z planisty
 	mov	rdi,	qword [r8]
@@ -231,7 +249,11 @@ cyjon_process_init:
 	; pobierz adres wolnego rekordu w tablicy serpentyny (kolejce procesów)
 	call	cyjon_process_init_phase_1
 
-	; przywróć aktualny dostępny numer PID
+	; sprawdź czy przydzielono numer procesu
+	cmp	rbx,	VARIABLE_EMPTY
+	je	.backward_process_init
+
+	; ustaw aktualny dostępny numer PID
 	mov	rax,	rbx
 
 	; zapisz PID procesu do rekordu
@@ -272,6 +294,31 @@ cyjon_process_init:
 
 	; powrót z procedury
 	ret
+
+.backward_process_init_pre0:
+	; usuń z stosu zmienną
+	add	rsp,	VARIABLE_QWORD_SIZE
+
+.backward_process_init:
+	; zwolnij pamięć zajętą procedurę
+	mov	rdi,	r11	; załaduj adres tablicy PML4 procesu
+	add	rdi,	255 * 0x08	; rozpocznij zwalnianie przestrzeni od rekordu 254
+	mov	rbx,	4	; ustaw poziom tablicy przetwarzanej
+	mov	rcx,	257	; ile pozostało rekordów w tablicy PML4 do zwolnienia
+	call	cyjon_page_release_area.loop
+
+	; zwolnij pamięć zajętą w przestrzeni jądra systemu
+	mov	rdi,	cr3	; załaduj adres tablicy PML4 procesu
+	add	rdi,	254 * 0x08	; rozpocznij zwalnianie przestrzeni od rekordu 254
+	mov	rbx,	4	; ustaw poziom tablicy przetwarzanej
+	mov	rcx,	258	; ile pozostało rekordów w tablicy PML4 do zwolnienia
+	call	cyjon_page_release_area.loop
+
+	; brak numeru procesu, nie uruchomiono
+	xor	rcx,	rcx
+
+	; koniec
+	jmp	.end
 
 cyjon_process_init_phase_0:
 	; przygotuj miejsce dla tablicy PML4
@@ -341,6 +388,12 @@ cyjon_process_init_phase_1:
 
 	; przygotuj miejsce na kolejną część/stronę
 	call	cyjon_page_allocate
+
+	; sprawdź czy przydzielono stronę
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.no_memory
+
+	; wyczyść stronę
 	call	cyjon_page_clear
 
 	; pobierz adres początku serpentyny
@@ -393,6 +446,13 @@ cyjon_process_init_phase_1:
 
 	; przywróć numer procesu
 	pop	rbx
+
+	; powrót z procedury
+	ret
+
+.no_memory:
+	; nie przydzielono numeru procesu, brak pamięci do rozszerzenia serpentyny
+	mov	rbx,	VARIABLE_FALSE
 
 	; powrót z procedury
 	ret

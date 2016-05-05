@@ -1338,7 +1338,7 @@ cyjon_page_map_logical_area:
 	; jeśli jest to ostatnia ramka do opisania i zarazem ostatnia jednocześnie w tablicach PML1,2,3 oraz 4
 	; może wystąpić przepełnienie stronicowania, jeśli nie wykona się testu ilości pozostałych ramek
 	cmp	rcx,	0x0000000000000001
-	je	.end
+	je	.no_error
 
 .leave:
 	; zwiększ ilość rekordów przechowywanych w tablicy PML1
@@ -1347,6 +1347,7 @@ cyjon_page_map_logical_area:
 	; opisz następne strony w tablicy PML1
 	loop	.loop
 
+.no_error:
 	; przydzielono pamięć
 	xor	rax,	rax
 
