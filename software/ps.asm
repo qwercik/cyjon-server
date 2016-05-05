@@ -36,7 +36,7 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_LIST
 	int	STATIC_KERNEL_SERVICE
 
-	; pobierz numer władnego PID
+	; pobierz własny numer PID
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_PID
 	int	STATIC_KERNEL_SERVICE
 
@@ -56,7 +56,7 @@ start:
 	push	rdi
 
 	; sprawdź czy proces jest demonem
-	mov	bx,	3
+	mov	bx,	STATIC_SERPENTINE_RECORD_BIT_DAEMON
 	bt	[rdi + 	VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	bx
 	jnc	.color_default
 
