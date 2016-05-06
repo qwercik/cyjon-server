@@ -1,7 +1,7 @@
 #Cyjon OS
 Prosty i wielozadaniowy system operacyjny, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
-![alt tag](http://wataha.net/shot/6.png)
+![alt tag](https://wataha.net/shot/6.png)
 
 #Wymagania sprzętowe:
 - procesor z rodziny amd64/x86-64,
