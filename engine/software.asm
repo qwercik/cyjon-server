@@ -70,7 +70,7 @@ move_included_files_to_virtual_filesystem:
 
 files_table:
 	; pierwszym plikiem musi być "init"
-	; jądro systemu z tej tablicy uruchamia pierwszy rekord jako proces
+	; jądro systemu z tej tablicy uruchamia pierwszy proces
 	dq	4				; ilość znaków w nazwie pliku
 	dq	file_init_end - file_init	; rozmiar pliku w Bajtach
 	dq	file_init			; wskaźnik początku pliku
@@ -91,6 +91,13 @@ files_table:
 	dq	file_login_end
 	db	'login'
 
+	; plik
+	dq	2
+	dq	file_ps_end - file_ps
+	dq	file_ps
+	dq	file_ps_end
+	db	'ps'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -102,3 +109,6 @@ file_shell_end:
 
 file_login:		incbin	'build/login.bin'
 file_login_end:
+
+file_ps:		incbin	'build/ps.bin'
+file_ps_end:

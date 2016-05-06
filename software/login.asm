@@ -11,8 +11,11 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-; zestaw imiennych wartości stałych
+; zestaw imiennych wartości stałych jądra systemu
 %include	'config.asm'
+
+%define	VARIABLE_PROGRAM_NAME		login
+%define	VARIABLE_PROGRAM_VERSION	"v0.1"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -65,7 +68,8 @@ start:
 ; wczytaj lokalizacje programu systemu
 %push
 	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
-	%strcat		%$include_program_locale,	"software/login/locale/", %$system_locale, ".asm"
+	%defstr		%$process_name		VARIABLE_PROGRAM_NAME
+	%strcat		%$include_program_locale,	"software/", %$process_name, "/locale/", %$system_locale, ".asm"
 	%include	%$include_program_locale
 %pop
 

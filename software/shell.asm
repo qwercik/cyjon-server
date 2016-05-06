@@ -11,12 +11,13 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-; zestaw imiennych wartości stałych
-%include	"config.asm"
+; zestaw imiennych wartości stałych jądra systemu
+%include	'config.asm'
 
+%define	VARIABLE_PROGRAM_NAME		shell
 %define	VARIABLE_PROGRAM_VERSION	"v0.48"
 
-; 64 bitowy kod programu
+; 64 Bitowy kod programu
 [BITS 64]
 
 ; adresowanie względne (skoki, etykiety)
@@ -178,18 +179,18 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 .noExit:
-;	; uruchom program o podanej nazwie
-;	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
-;	mov	rsi,	rdi	; załaduj wskaźnik nazwy pliku
-;	; przekaż listę argumentów do uruchamianego procesu
-;	mov	rdi,	command_cache
-;	mov	rdx,	qword [command_cache_size]
-;	int	STATIC_KERNEL_SERVICE
-;
-;	; sprawdź czy uruchomiono nowy proces
-;	cmp	rcx,	VARIABLE_EMPTY
-;	ja	.process
-;
+	; uruchom program o podanej nazwie
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
+	mov	rsi,	rdi	; załaduj wskaźnik nazwy pliku
+	; przekaż listę argumentów do uruchamianego procesu
+	mov	rdi,	command_cache
+	mov	rdx,	qword [command_cache_size]
+	int	STATIC_KERNEL_SERVICE
+
+	; sprawdź czy uruchomiono nowy proces
+	cmp	rcx,	VARIABLE_EMPTY
+	ja	.process
+
 	; wyświetl informację o braku danego programu na partycji systemowej
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
 	mov	rcx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
@@ -222,7 +223,8 @@ start:
 ; wczytaj lokalizacje programu systemu
 %push
 	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
-	%strcat		%$include_program_locale,	"software/shell/locale/", %$system_locale, ".asm"
+	%defstr		%$process_name		VARIABLE_PROGRAM_NAME
+	%strcat		%$include_program_locale,	"software/", %$process_name, "/locale/", %$system_locale, ".asm"
 	%include	%$include_program_locale
 %pop
 

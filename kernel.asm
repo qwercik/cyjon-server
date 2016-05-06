@@ -98,18 +98,17 @@ kernel:
 	; załaduj podstawową macierz znaków klawiatury
 	call	keyboard
 
-	; uruchom demona - sieci
-	movzx	rcx,	byte [variable_daemon_network_name_count]
-	mov	rdx,	daemon_network
-	mov	rsi,	text_daemon_network_name
-	call	cyjon_process_init_daemon
-
 	; uruchom demona - kolekcjonera śmieci
 	movzx	rcx,	byte [variable_daemon_garbage_collector_name_count]
 	mov	rdx,	daemon_garbage_collector
 	mov	rsi,	text_daemon_garbage_collector_name
 	call	cyjon_process_init_daemon
 
+	; uruchom demona - sieci
+	movzx	rcx,	byte [variable_daemon_network_name_count]
+	mov	rdx,	daemon_network
+	mov	rsi,	text_daemon_network_name
+	call	cyjon_process_init_daemon
 
 	; włączamy przerwania i wyjątki procesora
 	sti	; tchnij życie

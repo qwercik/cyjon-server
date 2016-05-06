@@ -44,7 +44,7 @@ cyjon_screen_cursor_indicator:
 
 	; oblicz przesunięcie do określonej kolumny X
 	mov	eax,	dword [rsp]
-	mov	rcx,	VARIABLE_SCREEN_TEXT_MODE_WIDTH * VARIABLE_SCREEN_TEXT_MODE_CHAR_SIZE
+	mov	rcx,	VARIABLE_SCREEN_TEXT_MODE_CHAR_SIZE
 	mul	rcx
 
 	; zapisz wskaźnik adresu w przestrzeni pamięci ekranu odpowiadający położeniu kursora

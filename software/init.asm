@@ -11,10 +11,11 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-; zestaw imiennych wartości stałych
+; zestaw imiennych wartości stałych jądra systemu
 %include	'config.asm'
 
-%define	VARIABLE_PROGRAM_VERSION	"v0.4"
+%define	VARIABLE_PROGRAM_NAME		init
+%define	VARIABLE_PROGRAM_VERSION	"v0.5"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -26,6 +27,7 @@
 [ORG VARIABLE_MEMORY_HIGH_REAL_ADDRESS]
 
 start:
+	; wyświetl powitanie
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
 	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	cl,	VARIABLE_FULL
@@ -70,6 +72,10 @@ start:
 	mov	rsi,	file_login	; wskaźnik do nazwy pliku
 	int	STATIC_KERNEL_SERVICE
 
+	; sprawdź czy uruchomiono proces
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.no_process
+
 	; sprawdź czy proces zakończył pracę
 	call	check_process_run
 
@@ -80,11 +86,27 @@ start:
 	mov	rsi,	file_shell
 	int	STATIC_KERNEL_SERVICE
 
+	; sprawdź czy uruchomiono proces
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.no_process
+
 	; sprawdź czy powołoka zakończyła pracę
 	call	check_process_run
 
 	; zalokuj dostęp do konsoli
 	jmp	.reload
+
+.no_process:
+	; wyświetl informacje o braku pamięci
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
+	mov	bl,	VARIABLE_COLOR_YELLOW
+	mov	cl,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_no_process
+	int	STATIC_KERNEL_SERVICE
+
+	; zatrzymaj wykonywanie procesu
+	jmp	$
 
 ;===============================================================================
 ; rcx - numer PID procesu do sprawdzenia
@@ -111,7 +133,8 @@ check_process_run:
 ; wczytaj lokalizacje programu systemu
 %push
 	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
-	%strcat		%$include_program_locale,	"software/init/locale/", %$system_locale, ".asm"
+	%defstr		%$process_name		VARIABLE_PROGRAM_NAME
+	%strcat		%$include_program_locale,	"software/", %$process_name, "/locale/", %$system_locale, ".asm"
 	%include	%$include_program_locale
 %pop
 

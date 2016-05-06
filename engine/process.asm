@@ -108,14 +108,14 @@ cyjon_process_init_daemon:
 ;	rdx - rozmiar argumentów do przetransferowania
 ;	rsi - wskaźnik do nazwy pliku i argumentów
 ; OUT:
-;	rax - numer PID uruchomionego procesu
+;	rcx - numer PID uruchomionego procesu
 ;
 ; pozostałe rejestry zachowane
-align	0x0100
 cyjon_process_init:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rbx
+	push	rcx
 	push	rdx
 	push	rsi
 	push	rdi
@@ -268,19 +268,19 @@ cyjon_process_init:
 	stosq
 
 	; ustaw flagę rekordu na aktywny
-	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE | STATIC_SERPENTINE_RECORD_FLAG_DAEMON
+	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE
 	stosq
 
 	; zwiększ ilość rekordów/procesów przechowywanych w tablicy
 	inc	qword [variable_multitasking_serpentine_record_counter]
 
 	; załaduj nazwę demona do rekordu serpentyny
-	mov	rcx,	qword [rsp + 0x28]
-	mov	rsi,	qword [rsp + 0x18]
+	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE * 0x05]
+	mov	rsi,	qword [rsp + VARIABLE_QWORD_SIZE * 0x03]
 	rep	movsb
 
-	; zwróć
-	mov	rcx,	rbx
+	; zwróć w rcx numer PID
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x05],	rbx
 
 .end:
 	; przywróć oryginalne rejestry
@@ -289,15 +289,12 @@ cyjon_process_init:
 	pop	rdi
 	pop	rsi
 	pop	rdx
+	pop	rcx
 	pop	rbx
 	pop	rax
 
 	; powrót z procedury
 	ret
-
-.backward_process_init_pre0:
-	; usuń z stosu zmienną
-	add	rsp,	VARIABLE_QWORD_SIZE
 
 .backward_process_init:
 	; zwolnij pamięć zajętą procedurę

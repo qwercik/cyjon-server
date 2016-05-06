@@ -17,7 +17,7 @@ text_kernel_welcome				db	"Uruchamiam Cyjon OS!", VARIABLE_ASCII_CODE_ENTER, VAR
 
 ; błędy jądra systemu
 text_kernel_panic_binary_memory_map_fail	db	"Nie udalo sie utworzyc Binarnej Mapy Pamieci.", VARIABLE_PANIC
-text_kernel_panic_cpu_interrupt			db	"CPU: Nieobsluzony wyjatek procesora.", VARIABLE_PANIC
+text_kernel_panic_cpu_interrupt			db	"CPU: Nieobsluzony wyjatek.", VARIABLE_PANIC
 text_kernel_panic_hardware_interrupt		db	"CPU: Nieobsluzone przerwanie sprzetowe.", VARIABLE_PANIC
 text_kernel_panic_software_interrupt		db	"CPU: Niedozwolone dzialanie.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
 text_kernel_panic_gdt				db	"GDT: Brak wolnej przestrzeni pamieci.", VARIABLE_PANIC

@@ -17,7 +17,7 @@ text_kernel_welcome				db	"Running Cyjon OS!", VARIABLE_ASCII_CODE_ENTER, VARIAB
 
 ; błędy jądra systemu
 text_kernel_panic_binary_memory_map_fail	db	"Failed to create Binary Memory Map.", VARIABLE_PANIC
-text_kernel_panic_cpu_interrupt			db	"CPU: Unhandled CPU interrupt.", VARIABLE_PANIC
+text_kernel_panic_cpu_interrupt			db	"CPU: Unhandled interrupt.", VARIABLE_PANIC
 text_kernel_panic_hardware_interrupt		db	"CPU: Unhandled Hardware interrupt.", VARIABLE_PANIC
 text_kernel_panic_software_interrupt		db	"CPU: Illegal operation.", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
 text_kernel_panic_gdt				db	"GDT: No free memory.", VARIABLE_PANIC

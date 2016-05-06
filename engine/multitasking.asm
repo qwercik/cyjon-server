@@ -11,21 +11,6 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-struc VARIABLE_TABLE_SERPENTINE_RECORD
-	.PID		resq	1
-	.CR3		resq	1
-	.RSP		resq	1
-	.FLAGS		resq	1
-	.NAME		resb	32
-	.ARGS		resq	1
-	.SIZE		resb	1
-endstruc
-
-STATIC_SERPENTINE_RECORD_FLAG_USED				equ	00000001b	; rekord w serpentynie jest zajęty przez uruchomiony proces
-STATIC_SERPENTINE_RECORD_FLAG_ACTIVE				equ	00000010b	; proces bierze czynny udział w pracy systemu
-STATIC_SERPENTINE_RECORD_FLAG_CLOSED				equ	00000100b
-STATIC_SERPENTINE_RECORD_FLAG_DAEMON				equ	00001000b
-
 ; następny wolny numer PID procesu
 variable_multitasking_pid_value_next				dq	VARIABLE_EMPTY
 
@@ -85,21 +70,19 @@ multitasking:
 	add	rdi,	0x08	; pomiń
 
 	; zapisz flagi procesu
-	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE
+	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE | STATIC_SERPENTINE_RECORD_FLAG_DAEMON
 	stosq
 
 	; ustaw nazwę procesu
-	mov	al,	"k"
+	mov	al,	"c"
 	stosb
-	mov	al,	"e"
+	mov	al,	"y"
 	stosb
-	mov	al,	"r"
+	mov	al,	"j"
+	stosb
+	mov	al,	"o"
 	stosb
 	mov	al,	"n"
-	stosb
-	mov	al,	"e"
-	stosb
-	mov	al,	"l"
 	stosb
 
 	; ustaw liczniki
