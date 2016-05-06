@@ -125,12 +125,10 @@ kernel:
 	; uruchom pierwszy proces "init"
 	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
 	xor	rdx,	rdx	; brak argumentów
-	mov	rsi,	files_table + ( VARIABLE_QWORD_SIZE * 4 )	; wskaźnik do nazwy pliku
+	mov	rsi,	files_table + ( VARIABLE_QWORD_SIZE * 0x04 )	; wskaźnik do nazwy pliku
 	call	cyjon_process_init
 
-	; zatrzymaj dalsze wykonywanie kodu jdra systemu
-	jmp	$
-
+%include	"engine/elive.asm"
 %include	"engine/screen.asm"
 %include	"engine/binary_memory_map.asm"
 %include	"engine/paging.asm"

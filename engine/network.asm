@@ -18,11 +18,11 @@ variable_network_i8254x_rx_cache				dq	VARIABLE_EMPTY
 variable_network_i8254x_tx_cache				dq	VARIABLE_EMPTY
 variable_network_i8254x_mac_address				dq	VARIABLE_EMPTY
 
-variable_network_semaphore					db	VARIABLE_FALSE
-variable_network_tx						dq	VARIABLE_EMPTY
-variable_network_tx_appear					db	VARIABLE_EMPTY
-variable_network_rx						dq	VARIABLE_EMPTY
-variable_network_rx_appear					db	VARIABLE_EMPTY
+;variable_network_semaphore					db	VARIABLE_FALSE
+;variable_network_tx						dq	VARIABLE_EMPTY
+;variable_network_tx_appear					db	VARIABLE_EMPTY
+;variable_network_rx						dq	VARIABLE_EMPTY
+;variable_network_rx_appear					db	VARIABLE_EMPTY
 
 ; 64 bitowy kod
 [BITS 64]
@@ -126,6 +126,7 @@ network_init:
 ;	brak
 ;
 ; wszystkie rejestry zachowane
+align	0x0100
 network:
 	; zachowaj oryginalne rejestry
 	push	rax
@@ -170,14 +171,37 @@ network:
 
 .tx:
 	; zachowaj informacje o wystąpieniu przerwania
-	mov	byte [variable_network_tx_appear],	VARIABLE_TRUE
+;	mov	byte [variable_network_tx_appear],	VARIABLE_TRUE
 
 	; czy wystąpiło jednocześnie wysłanie pakietu?
 	bt	eax,	7
 	jnc	.end	; nie
 
 .rx:
-	; brak systemu przechowywania pakietów
+	push	rax
+	push	rbx
+	push	rcx
+	push	rdx
+
+	; czy pakiet należy do nas?
+	mov	rax,	qword [variable_network_i8254x_rx_cache]
+	mov	rax,	qword [rax]
+	mov	rdx,	0x0000FFFFFFFFFFFF
+	and	rax,	rdx
+	cmp	rax,	qword [variable_network_i8254x_mac_address]
+	jne	.end_of_rx
+
+	mov	al,	"."
+	mov	bl,	VARIABLE_COLOR_WHITE
+	mov	rcx,	1
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	call	cyjon_screen_print_char
+
+.end_of_rx:
+	pop	rdx
+	pop	rcx
+	pop	rbx
+	pop	rax
 
 	; poinformuj kontroler o przetworzonym pakiecie
 	mov	rsi,	qword [variable_network_i8254x_base_address]
