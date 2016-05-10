@@ -1,5 +1,5 @@
-#Cyjon OS
-Prosty i wielozadaniowy system operacyjny, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
+#Cyjon SU
+Prosty i wielozadaniowy System Usług, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
 ![alt tag](http://wataha.net/shot/7.png)
 
