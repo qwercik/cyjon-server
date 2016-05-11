@@ -11,8 +11,8 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-text_daemon_garbage_collector_name		db	"garbage_collector"
-variable_daemon_garbage_collector_name_count	db	17
+text_daemon_garbage_collector_name		db	"daemon_garbage_collector"
+variable_daemon_garbage_collector_name_count	db	24
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -55,7 +55,7 @@ daemon_garbage_collector:
 
 	; zwolnij pamięć zajętą przez proces
 	mov	rdi,	rbx	; załaduj adres tablicy PML4 procesu
-	add	rdi,	255 * 0x08	; rozpocznij zwalnianie przestrzeni od rekordu stosu kontekstu procesu
+	add	rdi,	255 * VARIABLE_QWORD_SIZE	; rozpocznij zwalnianie przestrzeni od rekordu stosu kontekstu procesu
 	mov	rbx,	4	; ustaw poziom tablicy przetwarzanej
 	mov	rcx,	257	; ile pozostało rekordów w tablicy PML4 do zwolnienia
 	call	cyjon_page_release_area.loop

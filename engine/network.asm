@@ -18,11 +18,7 @@ variable_network_i8254x_rx_cache				dq	VARIABLE_EMPTY
 variable_network_i8254x_tx_cache				dq	VARIABLE_EMPTY
 variable_network_i8254x_mac_address				dq	VARIABLE_EMPTY
 
-;variable_network_semaphore					db	VARIABLE_FALSE
-;variable_network_tx						dq	VARIABLE_EMPTY
-;variable_network_tx_appear					db	VARIABLE_EMPTY
-;variable_network_rx						dq	VARIABLE_EMPTY
-;variable_network_rx_appear					db	VARIABLE_EMPTY
+variable_network_mac_filter					dq	0x0000FFFFFFFFFFFF
 
 ; 64 bitowy kod
 [BITS 64]
@@ -119,6 +115,8 @@ network_init:
 
 ;===============================================================================
 ; obsługa przerwania sprzętowego kontrolera sieci
+; procedura odbiera ramki ethernet od karty sieciowej
+; i zapisuje do bufora demona ethernet
 ; IN:
 ;	brak
 ;
@@ -139,11 +137,11 @@ network:
 
 	; przerwanie wywołane poprzez wysyłany pakiet? (TX)
 	bt	eax,	0
-	jc	.tx
+	jc	.transfer
 
 	; przerwanie wywołane poprzez przychodzący pakiet? (RX)
 	bt	eax,	7
-	jc	.rx
+	jc	.receive
 
 .end:
 	; poinformuj kontroler PIC o obsłużeniu przerwania sprzętowego
@@ -169,35 +167,33 @@ network:
 	; koniec obsługi przerwania sprzętowego
 	iretq
 
-.tx:
-	; zachowaj informacje o wystąpieniu przerwania
-;	mov	byte [variable_network_tx_appear],	VARIABLE_TRUE
-
+.transfer:
 	; czy wystąpiło jednocześnie wysłanie pakietu?
 	bt	eax,	7
 	jnc	.end	; nie
 
-.rx:
+; debug
+; 0x102000
+align 0x0100
+
+.receive:
 	push	rax
 	push	rbx
 	push	rcx
 	push	rdx
+	push	rsi
+	push	rdi
 
-	; czy pakiet należy do nas?
-	mov	rax,	qword [variable_network_i8254x_rx_cache]
-	mov	rax,	qword [rax]
-	mov	rdx,	0x0000FFFFFFFFFFFF
-	and	rax,	rdx
-	cmp	rax,	qword [variable_network_i8254x_mac_address]
-	jne	.end_of_rx
+	; adres przestrzeni cache karty sieciowej
+	mov	rsi,	qword [variable_network_i8254x_rx_cache]
 
-	mov	al,	"."
-	mov	bl,	VARIABLE_COLOR_WHITE
-	mov	rcx,	1
-	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	call	cyjon_screen_print_char
+	; ramka typu ARP
+	cmp	word [rsi + 0x0C],	0x0608
+	je	.arp
 
-.end_of_rx:
+.rx_end:
+	pop	rdi
+	pop	rsi
 	pop	rdx
 	pop	rcx
 	pop	rbx
@@ -212,13 +208,53 @@ network:
 	mov	rcx,	qword [variable_network_i8254x_rx_cache]
 	mov	dword [variable_network_i8254x_rx_descriptor],	ecx
 
-	; sprawdź czy demon sieci jest uruchomiony
-;	cmp	qword [variable_daemon_network_table_rx],	VARIABLE_EMPTY
-;	je	.rx	; czekaj
-
-	; pobierz pakiet z kontrolera sieci
-;	mov	rdi,	qword [variable_daemon_network_table_rx]
-;	call	cyjon_network_i8254x_receive_packet
-
 	; pakiet obsłużony
 	jmp	.end
+
+.arp:
+	; Hardware Type / HTYPE
+	cmp	word [rsi + 0x0E],	0x0100
+	jne	.rx_end
+
+	; Protocol Type / PTYPE
+	cmp	word [rsi + 0x0E + 0x02],	0x0008
+	jne	.rx_end
+
+	; Hardware Length / HLEN
+	cmp	byte [rsi + 0x0E + 0x04],	0x06
+	jne	.rx_end
+
+	; Protocol Length / PLEN
+	cmp	byte [rsi + 0x0E + 0x05],	0x04
+	jne	.rx_end
+
+	; załaduj ramkę do bufora
+	mov	rdi,	qword [variable_daemon_ethernet_table_rx_64]
+
+	; ilość rekordów
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / 64
+
+.arp_loop:
+	; koniec tablicy?
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.rx_end	; porzuć ramkę
+
+	; pusty rekord
+	cmp	qword [rdi],	VARIABLE_EMPTY
+	je	.arp_found
+
+	; następny rekord
+	add	rdi,	0x40
+	loop	.arp_loop
+
+.arp_found:
+	; rozmiar ramki 26 (ARP) + 2 (EtherType) + 12 (adresy MAC) Bajtów
+	mov	rax,	0x28
+	stosq
+
+	; kopiuj ramkę
+	mov	rcx,	rax
+	rep	movsb
+
+	; koniec obsługi
+	jmp	.rx_end

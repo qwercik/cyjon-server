@@ -106,7 +106,7 @@ kernel:
 
 	; uruchom demona - sieci
 	movzx	rcx,	byte [variable_daemon_network_name_count]
-	mov	rdx,	daemon_network
+	mov	rdx,	daemon_ethernet
 	mov	rsi,	text_daemon_network_name
 	call	cyjon_process_init_daemon
 
@@ -145,8 +145,8 @@ kernel:
 
 %include	"engine/variables.asm"
 
-%include	"engine/daemon/garbage_collector.asm"
-%include	"engine/daemon/network.asm"
+%include	"engine/daemon/daemon_garbage_collector.asm"
+%include	"engine/daemon/daemon_ethernet.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/network/i8254x.asm"
