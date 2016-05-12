@@ -98,18 +98,6 @@ kernel:
 	; załaduj podstawową macierz znaków klawiatury
 	call	keyboard
 
-	; uruchom demona - kolekcjonera śmieci
-	movzx	rcx,	byte [variable_daemon_garbage_collector_name_count]
-	mov	rdx,	daemon_garbage_collector
-	mov	rsi,	text_daemon_garbage_collector_name
-	call	cyjon_process_init_daemon
-
-	; uruchom demona - sieci
-	movzx	rcx,	byte [variable_daemon_network_name_count]
-	mov	rdx,	daemon_ethernet
-	mov	rsi,	text_daemon_network_name
-	call	cyjon_process_init_daemon
-
 	; włączamy przerwania i wyjątki procesora
 	sti	; tchnij życie
 
@@ -121,6 +109,18 @@ kernel:
 
 	; zarejestruj dołączone oprogramowanie w wirtualnym systemie plików jądra systemu
 	call	move_included_files_to_virtual_filesystem
+
+	; uruchom demona - kolekcjonera śmieci
+	movzx	rcx,	byte [variable_daemon_garbage_collector_name_count]
+	mov	rdx,	daemon_garbage_collector
+	mov	rsi,	text_daemon_garbage_collector_name
+	call	cyjon_process_init_daemon
+
+	; uruchom demona - sieci
+	movzx	rcx,	byte [variable_daemon_arp_name_count]
+	mov	rdx,	daemon_arp
+	mov	rsi,	text_daemon_arp_name
+	call	cyjon_process_init_daemon
 
 	; uruchom pierwszy proces "init"
 	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
@@ -146,7 +146,7 @@ kernel:
 %include	"engine/variables.asm"
 
 %include	"engine/daemon/daemon_garbage_collector.asm"
-%include	"engine/daemon/daemon_ethernet.asm"
+%include	"engine/daemon/daemon_arp.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/network/i8254x.asm"

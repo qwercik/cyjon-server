@@ -11,14 +11,37 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-variable_network_i8254x_base_address				dq	VARIABLE_EMPTY
-variable_network_i8254x_irq					db	VARIABLE_EMPTY
-variable_network_i8254x_rx_descriptor				dq	VARIABLE_EMPTY
-variable_network_i8254x_rx_cache				dq	VARIABLE_EMPTY
-variable_network_i8254x_tx_cache				dq	VARIABLE_EMPTY
-variable_network_i8254x_mac_address				dq	VARIABLE_EMPTY
+; rozmiary rekordów w tablicach
+VARIABLE_NETWORK_TABLE_MAX		equ	4096
+VARIABLE_NETWORK_TABLE_1024		equ	1024
+VARIABLE_NETWORK_TABLE_512		equ	512
+VARIABLE_NETWORK_TABLE_256		equ	256
+VARIABLE_NETWORK_TABLE_128		equ	128
+VARIABLE_NETWORK_TABLE_64		equ	64
 
-variable_network_mac_filter					dq	0x0000FFFFFFFFFFFF
+VARIABLE_NETWORK_FRAME_MAC_SOURCE	equ	VARIABLE_EMPTY
+VARIABLE_NETWORK_FRAME_MAC_DESTINATION	equ	0x0006
+VARIABLE_NETWORK_FRAME_TYPE		equ	0x000C
+VARIABLE_NETWORK_FRAME_TYPE_ARP		equ	0x0608
+VARIABLE_NETWORK_FRAME_DATA		equ	0x000E
+
+variable_network_i8254x_base_address	dq	VARIABLE_EMPTY
+variable_network_i8254x_irq		db	VARIABLE_EMPTY
+variable_network_i8254x_rx_descriptor	dq	VARIABLE_EMPTY
+variable_network_i8254x_rx_cache	dq	VARIABLE_EMPTY
+variable_network_i8254x_tx_cache	dq	VARIABLE_EMPTY
+variable_network_i8254x_mac_address	dq	VARIABLE_EMPTY
+
+; miejsce na pakiety przychodzące
+variable_network_table_rx_max		dq	VARIABLE_EMPTY
+variable_network_table_rx_1024		dq	VARIABLE_EMPTY
+variable_network_table_rx_512		dq	VARIABLE_EMPTY
+variable_network_table_rx_256		dq	VARIABLE_EMPTY
+variable_network_table_rx_128		dq	VARIABLE_EMPTY
+variable_network_table_rx_64		dq	VARIABLE_EMPTY
+
+variable_network_enabled		db	VARIABLE_TRUE
+variable_network_mac_filter		dq	0x0000FFFFFFFFFFFF
 
 ; 64 bitowy kod
 [BITS 64]
@@ -103,6 +126,11 @@ network_init:
 	mov	rdi,	network
 	call	cyjon_interrupt_descriptor_table_isr_hardware_mount
 
+	; tablica ramek przychodzących nie większych niż 64 Bajty
+	call	cyjon_page_allocate
+	call	cyjon_page_clear
+	mov	qword [variable_network_table_rx_64],	rdi
+
 	; włącz obsługę przerwania
 	mov	cx,	ax
 	call	cyjon_programmable_interrupt_controller_enable_irq
@@ -124,7 +152,6 @@ network_init:
 ;	brak
 ;
 ; wszystkie rejestry zachowane
-align	0x0100
 network:
 	; zachowaj oryginalne rejestry
 	push	rax
@@ -172,11 +199,8 @@ network:
 	bt	eax,	7
 	jnc	.end	; nie
 
-; debug
-; 0x102000
-align 0x0100
-
 .receive:
+	; zachowaj oryginalne rejestry
 	push	rax
 	push	rbx
 	push	rcx
@@ -184,14 +208,19 @@ align 0x0100
 	push	rsi
 	push	rdi
 
+	; dostęp do karty sieciowej jest możliwy?
+	cmp	byte [variable_network_enabled],	VARIABLE_FALSE
+	je	.rx_end	; nie
+
 	; adres przestrzeni cache karty sieciowej
 	mov	rsi,	qword [variable_network_i8254x_rx_cache]
 
 	; ramka typu ARP
-	cmp	word [rsi + 0x0C],	0x0608
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_TYPE],	VARIABLE_NETWORK_FRAME_TYPE_ARP
 	je	.arp
 
 .rx_end:
+	; przywóć oryginalne rejestry
 	pop	rdi
 	pop	rsi
 	pop	rdx
@@ -212,48 +241,27 @@ align 0x0100
 	jmp	.end
 
 .arp:
-	; Hardware Type / HTYPE
-	cmp	word [rsi + 0x0E],	0x0100
-	jne	.rx_end
-
-	; Protocol Type / PTYPE
-	cmp	word [rsi + 0x0E + 0x02],	0x0008
-	jne	.rx_end
-
-	; Hardware Length / HLEN
-	cmp	byte [rsi + 0x0E + 0x04],	0x06
-	jne	.rx_end
-
-	; Protocol Length / PLEN
-	cmp	byte [rsi + 0x0E + 0x05],	0x04
-	jne	.rx_end
-
 	; załaduj ramkę do bufora
-	mov	rdi,	qword [variable_daemon_ethernet_table_rx_64]
+	mov	rdi,	qword [variable_network_table_rx_64]
 
 	; ilość rekordów
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / 64
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
 
 .arp_loop:
-	; koniec tablicy?
-	cmp	rcx,	VARIABLE_EMPTY
-	je	.rx_end	; porzuć ramkę
-
 	; pusty rekord
 	cmp	qword [rdi],	VARIABLE_EMPTY
-	je	.arp_found
+	je	.arp_found_empty
 
 	; następny rekord
-	add	rdi,	0x40
+	add	rdi,	VARIABLE_NETWORK_TABLE_64
 	loop	.arp_loop
 
-.arp_found:
-	; rozmiar ramki 26 (ARP) + 2 (EtherType) + 12 (adresy MAC) Bajtów
-	mov	rax,	0x28
-	stosq
+	; brak miejsca w buforze
+	jmp	.rx_end
 
-	; kopiuj ramkę
-	mov	rcx,	rax
+.arp_found_empty:
+	; rozmiar ramki
+	mov	rcx,	42
 	rep	movsb
 
 	; koniec obsługi
