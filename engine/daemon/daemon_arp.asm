@@ -31,7 +31,9 @@ VARIABLE_DAEMON_ARP_OPERATION_ANSWER		equ	0x02
 text_daemon_arp_name				db	"daemon_network_arp"
 variable_daemon_arp_name_count			db	18
 
-variable_daemon_arp_frame	times	42	db	VARIABLE_EMPTY
+;debug
+align	0x0100
+variable_daemon_arp_frame	times	VARIABLE_NETWORK_FRAME_ARP_SIZE db	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -86,26 +88,57 @@ daemon_arp:
 	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_PLEN],	VARIABLE_DAEMON_ARP_PLEN
 	jne	.mismatch
 
-	; czy famka dotyczny naszego IP?
+	; czy ramka dotyczny naszego IP?
 	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_TARGET_IP]
 	and	rax,	qword [variable_network_mac_filter]
 	cmp	rax,	qword [variable_network_ip]
 	jne	.mismatch	; nie
 
-	; czy proszą o nasz adres MAC?
-	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_OPERATION],	VARIABLE_DAEMON_ARP_OPERATION_REQUEST
-	jne	.no
+	; zachowaj wskanik do oryginalnego pakietu
+	push	rsi
 
+	; skopiuj pakiet do bufora
+	mov	rdi,	variable_daemon_arp_frame
+	mov	rcx,	VARIABLE_NETWORK_FRAME_ARP_SIZE
+	rep	movsb
 
+	; zamień miejscami nadawcę <> odbiorcę
+	mov	rdi,	variable_daemon_arp_frame
+	mov	rax,	qword [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_SENDER_MAC]
+	push	rax	; zapamiętaj nadawcę
+	mov	bx,	word [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_SENDER_MAC + VARIABLE_QWORD_SIZE]
+	xchg	rax,	qword [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_TARGET_MAC]
+	xchg	bx,	word [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_TARGET_MAC + VARIABLE_QWORD_SIZE]
+	mov	word [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_SENDER_MAC + VARIABLE_QWORD_SIZE],	bx
 
-.no:
-	
+	; zmień typ operacji na odpowiedź
+	mov	word [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_OPERATION],	0x0200
 
-; debug
-align 0x0100
+	; w odpowiedzi podaj nasz adres MAC
+	mov	rdx,	0xFFFF000000000000
+	and	rax,	rdx
+	or	rax,	qword [variable_network_i8254x_mac_address]
+	mov	qword [rdi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_SENDER_MAC],	rax
 
-	; rekord przetworzony, wyczyść
-	jmp	.mismatch
+	; odpowiedź wyślij do
+	pop	rax
+	and	rax,	qword [variable_network_mac_filter]
+	mov	qword [rdi],	rax
+
+	; odpowiedź od
+	mov	rax,	qword [variable_network_i8254x_mac_address]
+	mov	dword [rdi + VARIABLE_NETWORK_FRAME_MAC_SOURCE],	eax
+	shr	rax,	32
+	mov	word [rdi + VARIABLE_NETWORK_FRAME_MAC_SOURCE + VARIABLE_DWORD_SIZE],	ax
+
+	; wyślij
+	mov	rbx,	VARIABLE_NETWORK_FRAME_TYPE_ARP
+	mov	rcx,	VARIABLE_NETWORK_FRAME_ARP_SIZE
+	mov	rsi,	rdi
+	call	cyjon_network_i8254x_transmit_packet
+
+	; usuń przetworzony pakiet z bufora
+	pop	rsi
 
 .mismatch:
 	; ramka ARP jest nieobsługiwana, usuń rekord
