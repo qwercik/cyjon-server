@@ -35,6 +35,12 @@ irq64:
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_KEYBOARD
 	je	.keyboard
 
+
+
+	; obsługa sieci?
+	cmp	ah,	VARIABLE_KERNEL_SERVICE_NETWORK
+	je	.network
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -98,6 +104,18 @@ irq64:
 	; pobierz kod klawisza z bufora klawiatury?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_KEYBOARD_GET_KEY
 	je	irq64_keyboard_get_key
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+.network:
+	; ustaw adres IP?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_IP_SET
+	je	irq64_network_ip_set
+
+	; pobierz adres IP?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_IP_GET
+	je	irq64_network_ip_get
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -468,6 +486,22 @@ irq64_screen_cursor_set:
 irq64_keyboard_get_key:
 	; pobierz kod ASCII klawisza z bufora klawiatury
 	call	cyjon_keyboard_key_read
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;===============================================================================
+irq64_network_ip_set:
+	; ustaw adres IP
+	mov	qword [variable_network_ip],	rbx
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_network_ip_get:
+	; pobierz adres IP
+	mov	rbx,	qword [variable_network_ip]
 
 	; koniec obsługi przerwania programowego
 	iretq

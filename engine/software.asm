@@ -98,6 +98,13 @@ files_table:
 	dq	file_ps_end
 	db	'ps'
 
+	; plik
+	dq	2
+	dq	file_ip_end - file_ip
+	dq	file_ip
+	dq	file_ip_end
+	db	'ip'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -112,3 +119,6 @@ file_login_end:
 
 file_ps:		incbin	'build/ps.bin'
 file_ps_end:
+
+file_ip:		incbin	'build/ip.bin'
+file_ip_end:

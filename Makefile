@@ -10,6 +10,7 @@ all:
 	$(ASM) $(SOFTWARE)/login.asm		-o $(BUILD)/login.bin
 	$(ASM) $(SOFTWARE)/shell.asm		-o $(BUILD)/shell.bin
 	$(ASM) $(SOFTWARE)/ps.asm		-o $(BUILD)/ps.bin
+	$(ASM) $(SOFTWARE)/ip.asm		-o $(BUILD)/ip.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -23,4 +24,5 @@ clean:
 		$(BUILD)/init.bin		\
 		$(BUILD)/login.bin 	\
 		$(BUILD)/shell.bin 	\
-		$(BUILD)/ps.bin
+		$(BUILD)/ps.bin		\
+		$(BUILD)/ip.bin

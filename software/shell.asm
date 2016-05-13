@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		shell
-%define	VARIABLE_PROGRAM_VERSION	"v0.48"
+%define	VARIABLE_PROGRAM_VERSION	"v0.49"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -36,6 +36,14 @@ prestart:
 	int	STATIC_KERNEL_SERVICE
 
 start:
+	; sprawdź pozycję kursora
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_GET
+	int	STATIC_KERNEL_SERVICE
+
+	; jeśli kursor znajduje się na początku ekranu, ok
+	cmp	ebx,	VARIABLE_EMPTY
+	jne	.restart	; wyświetl znak zachęty od nowej linii
+
 	; wyświetl znak zachęty
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
 	mov	rbx,	VARIABLE_COLOR_LIGHT_RED

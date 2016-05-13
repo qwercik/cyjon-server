@@ -43,6 +43,9 @@ variable_network_table_rx_64		dq	VARIABLE_EMPTY
 variable_network_enabled		db	VARIABLE_TRUE
 variable_network_mac_filter		dq	0x0000FFFFFFFFFFFF
 
+; wartość ustalona do czasu utworzenia aplikacji do konfiguracji
+variable_network_ip			dq	0x00004000000A	; 10.0.0.64
+
 ; 64 bitowy kod
 [BITS 64]
 
@@ -96,6 +99,9 @@ network_init:
 	; koniec szyn?
 	cmp	ebx,	256
 	jb	.next
+
+	; wyłącz obsługę sieci
+	mov	byte [variable_network_enabled],	VARIABLE_FALSE
 
 .end:
 	; nie znaleziono jakiegokolwiek kontrolera sieci

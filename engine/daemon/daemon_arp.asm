@@ -28,8 +28,10 @@ VARIABLE_DAEMON_ARP_PLEN			equ	0x04	; IP
 VARIABLE_DAEMON_ARP_OPERATION_REQUEST		equ	0x01
 VARIABLE_DAEMON_ARP_OPERATION_ANSWER		equ	0x02
 
-text_daemon_arp_name			db	"daemon_network_arp"
-variable_daemon_arp_name_count		db	18
+text_daemon_arp_name				db	"daemon_network_arp"
+variable_daemon_arp_name_count			db	18
+
+variable_daemon_arp_frame	times	42	db	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -84,7 +86,20 @@ daemon_arp:
 	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_PLEN],	VARIABLE_DAEMON_ARP_PLEN
 	jne	.mismatch
 
-	jmp	$
+	; czy famka dotyczny naszego IP?
+	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_TARGET_IP]
+	and	rax,	qword [variable_network_mac_filter]
+	cmp	rax,	qword [variable_network_ip]
+	jne	.mismatch	; nie
+
+	; czy proszą o nasz adres MAC?
+	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_DATA + VARIABLE_DAEMON_ARP_FRAME_DATA_OPERATION],	VARIABLE_DAEMON_ARP_OPERATION_REQUEST
+	jne	.no
+
+
+
+.no:
+	
 
 ; debug
 align 0x0100
