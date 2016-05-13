@@ -15,7 +15,8 @@
 [BITS 64]
 
 ;===============================================================================
-; procedura ustawia domyślną macierz klawiszy (małe znaki)
+; procedura modyfikuje wskaźnik początku ciągu i jego rozmiar,
+; pozbywając się wszystkich białych znaków na krańcach
 ; IN:
 ;	rcx	- ilość znaków w ciągu
 ;	rdi	- wskaźnik do ciągu
