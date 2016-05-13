@@ -107,6 +107,8 @@ cyjon_process_init_daemon:
 ;	rcx - ilość znaków w nazwie pliku
 ;	rdx - rozmiar argumentów do przetransferowania
 ;	rsi - wskaźnik do nazwy pliku i argumentów
+;	rdi - wskaźnik do ciągu argumentów
+;
 ; OUT:
 ;	rcx - numer PID uruchomionego procesu
 ;
@@ -126,8 +128,8 @@ cyjon_process_init:
 	call	cyjon_virtual_file_system_find_file
 	jc	.found	; znaleziono
 
-	; nie znaleziono
-	xor	rax,	rax
+	; nie znaleziono, zwróć wynik operacji w rcx
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x05],	VARIABLE_EMPTY
 
 	; koniec obsługi procedury
 	jmp	.end

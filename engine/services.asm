@@ -483,6 +483,7 @@ irq64_screen_cursor_set:
 	iretq	
 
 ;===============================================================================
+;===============================================================================
 irq64_keyboard_get_key:
 	; pobierz kod ASCII klawisza z bufora klawiatury
 	call	cyjon_keyboard_key_read
@@ -490,7 +491,7 @@ irq64_keyboard_get_key:
 	; koniec obsługi przerwania programowego
 	iretq
 
-;===============================================================================
+;-------------------------------------------------------------------------------
 irq64_network_ip_set:
 	; ustaw adres IP
 	mov	qword [variable_network_ip],	rbx
