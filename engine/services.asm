@@ -63,7 +63,9 @@ irq64:
 	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_LIST
 	je	irq64_process_list
 
-
+	; pobrać przesłane argumenty?
+	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_ARGS
+	je	irq64_process_args
 
 	; pobrać własny numer PID?
 	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_PID
@@ -338,6 +340,61 @@ irq64_process_list:
 	pop	rsi
 	pop	rdx
 	pop	rcx
+	pop	rbx
+	pop	rax
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_process_args:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rdx
+	push	rsi
+	push	rdi
+	push	r8
+	push	r11
+
+	; pobierz rozmiar ciągu argumentów przesłanych do procesu
+	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
+	mov	rcx,	qword [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.ARGS]
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.end	; brak argumentów przesłanych do procesu
+
+	; przygotuj miejsce pod argumenty
+	mov	rax,	qword [rsp + VARIABLE_QWORD_SIZE * 0x02]
+	mov	rbx,	VARIABLE_MEMORY_HIGH_ADDRESS
+	sub	rax,	rbx
+	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
+	mov	rcx,	1	; rozmiar 1 strona
+	mov	r11,	cr3
+	call	cyjon_page_map_logical_area
+
+	mov	rsi,	qword [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.ARGS]
+	mov	rdi,	qword [rsp + VARIABLE_QWORD_SIZE * 0x02]
+
+	; zachowaj rozmiar ciągu argumentów
+	push	qword [rsi]
+
+	; przesuń wskaźnik na początek ciągu
+	add	rsi,	VARIABLE_QWORD_SIZE
+
+	; skopiuj ciąg argumentów do pamięci procesu
+	mov	rcx,	( VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE ) / VARIABLE_QWORD_SIZE
+	rep	movsq
+
+	; przywróć rozmiar ciągu argumentów
+	pop	rcx
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	r11
+	pop	r8
+	pop	rdi
+	pop	rsi
+	pop	rdx
 	pop	rbx
 	pop	rax
 

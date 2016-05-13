@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		shell
-%define	VARIABLE_PROGRAM_VERSION	"v0.49"
+%define	VARIABLE_PROGRAM_VERSION	"v0.50"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -77,7 +77,7 @@ start:
 
 .text:
 	; zachowaj ilość znaków w buforze
-	mov	qword [command_cache_size],	rcx
+	push	rcx
 
 	; przejdź do nowej linii
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
@@ -86,7 +86,18 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 	; przywróć ilość znaków w buforze
-	mov	rcx,	qword [command_cache_size]
+	pop	rcx
+
+	; usuń "białe" znaki z poczatku i końca ciągu
+	call	library_trim
+	; ciąg znaków był pusty?
+	cmp	rcx,	VARIABLE_EMPTY
+	je	start	; tak
+
+	; zachowaj ilość znaków w buforze
+	mov	qword [command_cache_size],	rcx
+	; zachowaj wskaźnik nowego początku
+	mov	qword [command_cache_trimmed],	rdi
 
 	; znajdź pierwsze słowo (polecenie) do wykonania/uruchomienia
 	call	library_find_first_word
@@ -191,7 +202,7 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_NEW
 	mov	rsi,	rdi	; załaduj wskaźnik nazwy pliku
 	; przekaż listę argumentów do uruchamianego procesu
-	mov	rdi,	command_cache
+	mov	rdi,	qword [command_cache_trimmed]
 	mov	rdx,	qword [command_cache_size]
 	int	STATIC_KERNEL_SERVICE
 
@@ -227,6 +238,7 @@ start:
 %include	'library/input.asm'
 %include	'library/find_first_word.asm'
 %include	'library/compare_string.asm'
+%include	'library/trim.asm'
 
 ; wczytaj lokalizacje programu systemu
 %push
@@ -238,6 +250,7 @@ start:
 
 command_cache	times	256	db	VARIABLE_EMPTY
 				db	VARIABLE_ASCII_CODE_TERMINATOR
+command_cache_trimmed		dq	VARIABLE_EMPTY
 command_cache_size		dq	VARIABLE_EMPTY
 
 text_prompt_with_newline	db	VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE

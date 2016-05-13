@@ -124,12 +124,15 @@ cyjon_process_init:
 	push	r8
 	push	r11
 
+	; zmienne lokalne
+	push	VARIABLE_EMPTY
+
 	; szukaj pliku w wirtualnym systemie plików
 	call	cyjon_virtual_file_system_find_file
 	jc	.found	; znaleziono
 
 	; nie znaleziono, zwróć wynik operacji w rcx
-	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x05],	VARIABLE_EMPTY
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	VARIABLE_EMPTY
 
 	; koniec obsługi procedury
 	jmp	.end
@@ -179,6 +182,24 @@ cyjon_process_init:
 	; załaduj tablicę PML4 procesu
 	mov	r11,	rdi
 
+	; czy przesłano argumenty?
+	cmp	qword [rsp + VARIABLE_QWORD_SIZE * 0x03],	VARIABLE_EMPTY
+	je	.no
+
+	; zachowaj
+	mov	qword [rsp],	rdi
+
+	; przygotuj miejsce dla argumentów przesłanych do procesu
+	call	cyjon_page_allocate
+
+	; przynano miejsce?
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.backward_process_init
+
+	; przywróć adres tablicy PML4, zachowaj adres przestrzeni argumentów
+	xchg	rdi,	qword [rsp]
+
+.no:
 	; mapuj tablicę PML4 aktualnego procesu do nowego
 	mov	rsi,	cr3
 	mov	rcx,	255
@@ -258,6 +279,9 @@ cyjon_process_init:
 	; ustaw aktualny dostępny numer PID
 	mov	rax,	rbx
 
+	; zachowaj adres rekordu
+	push	rdi
+
 	; zapisz PID procesu do rekordu
 	stosq
 
@@ -277,14 +301,47 @@ cyjon_process_init:
 	inc	qword [variable_multitasking_serpentine_record_counter]
 
 	; załaduj nazwę demona do rekordu serpentyny
-	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE * 0x05]
-	mov	rsi,	qword [rsp + VARIABLE_QWORD_SIZE * 0x03]
+	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE * 0x07]
+	mov	rsi,	qword [rsp + VARIABLE_QWORD_SIZE * 0x05]
 	rep	movsb
 
+	; przywróć adres rekordu
+	pop	rdx
+
+	; przekazano do procesu argumenty?
+	cmp	qword [rsp],	VARIABLE_EMPTY
+	je	.no_args
+
+	; przekaż do procesu wskaźnk do ciągu argumentów
+	mov	rdi,	qword [rsp]
+	mov	qword [rdx + VARIABLE_TABLE_SERPENTINE_RECORD.ARGS],	rdi
+
+	; wyczyść
+	call	cyjon_page_clear
+
+	; pobierz wskaźnik do oryginału argumentów
+	mov	rsi,	qword [rsp + VARIABLE_QWORD_SIZE * 0x03]
+	; rozmiar ciągu argumentów
+	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE * 0x05]
+
+	; zapisz rozmiar ciągu argumentów do rekordu serpentyny
+	mov	qword [rdx + VARIABLE_TABLE_SERPENTINE_RECORD.SIZE],	rcx
+
+	; zapisz rozmiar listy argumentów
+	mov	qword [rdi],	rcx
+	add	rdi,	VARIABLE_QWORD_SIZE
+
+	; skopiuj argumenty z oryginału do kopii
+	rep	movsb
+
+.no_args:
 	; zwróć w rcx numer PID
-	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x05],	rbx
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	rbx
 
 .end:
+	; usuń zmienne lokalne
+	pop	rax
+
 	; przywróć oryginalne rejestry
 	pop	r11
 	pop	r8

@@ -27,6 +27,19 @@
 [ORG VARIABLE_MEMORY_HIGH_REAL_ADDRESS]
 
 start:
+	; pobierz przesłane argumenty
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_ARGS
+	mov	rdi,	end
+	call	library_align_address_up_to_page
+	int	STATIC_KERNEL_SERVICE
+
+	; czy arguymenty istnieją?
+	cmp	rcx,	0x02
+	ja	.no_option
+
+	; cdn.
+
+.no_option:
 	; pobierz adres IP
 	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_IP_GET
 	int	STATIC_KERNEL_SERVICE
@@ -75,4 +88,8 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
 	int	STATIC_KERNEL_SERVICE
 
+%include	"library/align_address_up_to_page.asm"
+
 text_dot	db	".", VARIABLE_ASCII_CODE_TERMINATOR
+
+end:
