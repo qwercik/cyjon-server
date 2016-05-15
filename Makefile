@@ -26,4 +26,5 @@ clean:
 		$(BUILD)/login.bin 	\
 		$(BUILD)/shell.bin 	\
 		$(BUILD)/ps.bin		\
-		$(BUILD)/ip.bin
+		$(BUILD)/ip.bin		\
+		$(BUILD)/help.bin
