@@ -1,5 +1,5 @@
 #Cyjon SU
-Prosty i wielozadaniowy System Usług, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
+Prosty i wielozadaniowy System Operacyjny (zobaczymy co z tego wyjdzie, może System Usług), napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
 ![screenshot](screenshot.png)
 
