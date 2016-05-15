@@ -11,6 +11,7 @@ all:
 	$(ASM) $(SOFTWARE)/shell.asm		-o $(BUILD)/shell.bin
 	$(ASM) $(SOFTWARE)/ps.asm		-o $(BUILD)/ps.bin
 	$(ASM) $(SOFTWARE)/ip.asm		-o $(BUILD)/ip.bin
+	$(ASM) $(SOFTWARE)/help.asm		-o $(BUILD)/help.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 

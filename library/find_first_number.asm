@@ -11,70 +11,65 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
+VARIABLE_LIBRARY_FFN_NUMBER_LOW		equ	0x30
+VARIABLE_LIBRARY_FFN_NUMBER_HIGH	equ	0x39
+
 ; 64 bitowy kod programu
 [BITS 64]
 
 ;===============================================================================
-; procedura wyszukuje pierwszego ciągu znaków zakończonego znakiem SPACJI, TABULATORA lub ENTERA
+; procedura pobiera od użytkownika ciąg znaków zakończony klawiszem ENTER o sprecyzowanej długości
 ; IN:
 ;	rcx - rozmiar bufora
-;	rdi - wskaźnik do bufora
+;	rsi - wskaźnik do bufora przechowującego pobrane znaki
 ; OUT:
 ;	rcx - rozmiar pierwszego znalezionego "słowa"
-;	rdi - wskaźnik bezwzględny w ciągu do znalezionego słowa
+;	rsi - wskaźnik bezwzględny w ciągu do znalezionego słowa
 ;
 ; pozostałe rejestry zachowane
-library_find_first_word:
+library_find_first_number:
 	; zachowaj oryginalne rejestry
 	push	rax
 
 .find:
-	; pomiń spacje przed słowem
-	cmp	byte [rdi],	VARIABLE_ASCII_CODE_SPACE
-	je	.leave
-
-	; pomiń znak tabulacji
-	cmp	byte [rdi],	VARIABLE_ASCII_CODE_TAB
-	je	.leave
+	; wszystko co nie jest cyfrą
+	cmp	byte [rsi],	VARIABLE_LIBRARY_FFN_NUMBER_LOW
+	jb	.leave
+	cmp	byte [rsi],	VARIABLE_LIBRARY_FFN_NUMBER_HIGH
+	ja	.leave
 
 	; znaleziono piwerszy znak należący do słowa
-	jmp	.char
+	jmp	.number
 
 .leave:
 	; przesuń wskaźnik bufora na następny znak
-	inc	rdi
+	inc	rsi
 
 	; kontynuuj
 	loop	.find
 
-.char:
+.number:
 	; sprawdź czy w bufor coś zawiera
 	cmp	rcx,	0
 	je	.not_found	; jeśli pusty
 
-	; oblicz rozmiar słowa
+	; wylicz ilość znaków na liczbę
 
-	; zachowaj adres początku słowa
-	push	rdi
+	; zachowaj adres początku
+	push	rsi
 
 	; wyczyść licznik
 	xor	rax,	rax
 
 .count:
 	; sprawdź czy koniec słowa
-	cmp	byte [rdi],	VARIABLE_ASCII_CODE_SPACE
-	je	.ready
-
-	; sprawdź czy koniec słowa
-	cmp	byte [rdi],	VARIABLE_ASCII_CODE_TAB
-	je	.ready
-
-	; nieoczekiwany koniec ciągu?
-	cmp	byte [rdi],	VARIABLE_ASCII_CODE_TERMINATOR
-	je	.ready
+	cmp	byte [rdi],	VARIABLE_LIBRARY_FFN_NUMBER_LOW
+	jb	.ready
+	cmp	byte [rdi],	VARIABLE_LIBRARY_FFN_NUMBER_HIGH
+	ja	.ready
 
 	; przesuń wskaźnik na następny znak w buforze polecenia
-	inc	rdi
+	inc	rsi
 
 	; zwiększ licznik znaków przypadających na znalezione polecenie
 	inc	rax

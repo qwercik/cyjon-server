@@ -105,6 +105,13 @@ files_table:
 	dq	file_ip_end
 	db	'ip'
 
+	; plik
+	dq	4
+	dq	file_help_end - file_help
+	dq	file_help
+	dq	file_help_end
+	db	'help'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -122,3 +129,6 @@ file_ps_end:
 
 file_ip:		incbin	'build/ip.bin'
 file_ip_end:
+
+file_help:		incbin	'build/help.bin'
+file_help_end:
