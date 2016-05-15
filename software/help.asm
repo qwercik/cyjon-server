@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		help
-%define	VARIABLE_PROGRAM_VERSION	"v0.17"
+%define	VARIABLE_PROGRAM_VERSION	"v0.18"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -81,6 +81,9 @@ command_table:
 
 	db	'help   '
 	dq	text_help
+
+	db	'ip     '
+	dq	text_ip
 
 	db	'ps     '
 	dq	text_ps

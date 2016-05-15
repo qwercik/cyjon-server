@@ -15,85 +15,92 @@
 [BITS 64]
 
 ;===============================================================================
-; 
+; procedura przetwarza ciąg cyfr z ASCII na wartość heksadecymalną
 ; IN:
+;	rbx - system liczbowy
 ;	rcx - rozmiar liczby w znakach
-;	rsi - wskaźnik do ciągu cyfr
+;	rdi - wskaźnik do ciągu cyfr
 ; OUT:
+;	CF  - 0 jeśli, ok
 ;	rax - liczba w postaci heksadecymalnej
-;
 ;
 ; pozostałe rejestry zachowane
 library_string_to_number:
 	; zachowaj oryginalne rejestry
 	push	rax
+	push	rbx
+	push	rcx
+	push	rdx
+	push	rdi
+	push	r8
+	push	r9
 
-.find:
-	; wszystko co nie jest cyfrą
-	cmp	byte [rsi],	VARIABLE_LIBRARY_FFN_NUMBER_LOW
-	jb	.leave
-	cmp	byte [rsi],	VARIABLE_LIBRARY_FFN_NUMBER_HIGH
-	ja	.leave
+	; przesuń wskaźnik na ostatnią cyfrę
+	add	rdi,	rcx
+	dec	rdi
 
-	; znaleziono piwerszy znak należący do słowa
-	jmp	.number
+	; system liczbowy
+	mov	r9,	rbx
 
-.leave:
-	; przesuń wskaźnik bufora na następny znak
-	inc	rsi
+	; wyczyść wynik i resztę z dzielenia
+	xor	rbx,	rbx
+	xor	rdx,	rdx
 
-	; kontynuuj
-	loop	.find
+	; najmniejszą liczbą całkowitą jest
+	mov	r8,	1	; jedności
 
-.number:
-	; sprawdź czy w bufor coś zawiera
-	cmp	rcx,	0
-	je	.not_found	; jeśli pusty
+.loop:
+	; pobierz cyfrę w postaci kodu ASCII
+	movzx	rax,	byte [rdi]
+	; usuń kod ASCII
+	sub	rax,	VARIABLE_ASCII_CODE_NUMBER
+	; przelicz wartość/wagę cyfry z danej pozycji
+	mul	r8
 
-	; wylicz ilość znaków na liczbę
+	; brak obsługi liczb o rozmiarze powyżej 64 bitów
+	cmp	rdx,	VARIABLE_EMPTY
+	jne	.error
 
-	; zachowaj adres początku
-	push	rsi
+	; dodaj do wyniku
+	add	rbx,	rax
 
-	; wyczyść licznik
-	xor	rax,	rax
+	; oblicz wartość/wagę nastepnej pozycji cyfry
+	mov	rax,	r8
+	mul	r9
 
-.count:
-	; sprawdź czy koniec słowa
-	cmp	byte [rdi],	VARIABLE_LIBRARY_FFN_NUMBER_LOW
-	jb	.ready
-	cmp	byte [rdi],	VARIABLE_LIBRARY_FFN_NUMBER_HIGH
-	ja	.ready
+	; brak obsługi systemu liczbowego o rozmiarze powyżej 64 bitów
+	cmp	rdx,	VARIABLE_EMPTY
+	jne	.error
 
-	; przesuń wskaźnik na następny znak w buforze polecenia
-	inc	rsi
+	; ustaw nową wartość/wagę cyfry
+	mov	r8,	rax
+	; przesuń wskaźnik na następną pozycję
+	dec	rdi
+	; kontynuj z pozostałymi cyframi
+	loop	.loop
 
-	; zwiększ licznik znaków przypadających na znalezione polecenie
-	inc	rax
+	; zwróć wynik w rejestrze RAX
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	rbx
 
-	; zliczaj dalej
-	loop	.count
-
-.ready:
-	; ustaw rozmiar słowa w znakach
-	mov	rcx,	rax
-
-	; przywróć adres początku słowa
-	pop	rdi
-
-	; ustaw flagę
-	stc
-
-	; koniec
-	jmp	.end
-
-.not_found:
-	; nie znaleziono słowa w ciągu znaków
+	; wyliczenia gotowe
 	clc
 
 .end:
 	; przywróć oryginalne rejestry
+	pop	r9
+	pop	r8
+	pop	rdi
+	pop	rdx
+	pop	rcx
+	pop	rbx
 	pop	rax
 
 	; powrót z procedury
 	ret
+
+.error:
+	; brak wyniku
+	stc
+
+	; koniec
+	jmp	.end

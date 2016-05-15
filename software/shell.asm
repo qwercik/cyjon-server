@@ -61,7 +61,7 @@ start:
 	call	library_input
 
 	; czy użytkownik wpisał cokolwiek?
-	jc	.text
+	jnc	.text
 
 .restart:
 	; wyświetl znak zachęty od nowej linii
@@ -103,7 +103,7 @@ start:
 	call	library_find_first_word
 
 	; bufor zawiera słowo?
-	jnc	start	; jeśli nie, wyświetl znak zachęty od nowej linii
+	jc	start	; jeśli nie, wyświetl znak zachęty od nowej linii
 
 	; sprawdź czy polecenie wewnętrzne 'clear' ---------------------
 	mov	rsi,	command_clear

@@ -20,6 +20,7 @@
 ;	rcx - rozmiar bufora
 ;	rdi - wskaźnik do bufora
 ; OUT:
+;	CF  - 0 jeśli, ok
 ;	rcx - rozmiar pierwszego znalezionego "słowa"
 ;	rdi - wskaźnik bezwzględny w ciągu do znalezionego słowa
 ;
@@ -90,14 +91,14 @@ library_find_first_word:
 	pop	rdi
 
 	; ustaw flagę
-	stc
+	clc
 
 	; koniec
 	jmp	.end
 
 .not_found:
 	; nie znaleziono słowa w ciągu znaków
-	clc
+	stc
 
 .end:
 	; przywróć oryginalne rejestry

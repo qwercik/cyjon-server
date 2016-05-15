@@ -21,7 +21,7 @@
 ;	rdi - wskaźnik do bufora przechowującego pobrane znaki
 ; OUT:
 ;	rcx - ilość pobranych znaków od użytkownika
-;	CF - w buforze znajdują się znaki
+;	CF  - 0 jeśli, ok
 ;
 ; pozostałe rejestry zachowane
 library_input:
@@ -121,15 +121,15 @@ library_input:
 	; pobierz wynik
 	pop	rcx
 
-	; ustaw flagę CF
-	stc
+	; wyłącz flagę CF
+	clc
 
 	; koniec procedury
 	jmp	.end
 
 .empty:
-	; wyłącz flagę CF
-	clc
+	; włącz flagę CF
+	stc
 
 	; przywróć oryginalny rozmiar bufora
 	pop	rcx
@@ -164,8 +164,8 @@ library_input:
 	; przywróc oryginalny rozmiar bufora
 	pop	rcx
 
-	; wyłącz flagę CF
-	clc
+	; włącz flagę CF
+	stc
 
 	; koniec procedury
 	jmp	.end

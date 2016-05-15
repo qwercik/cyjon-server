@@ -551,7 +551,7 @@ irq64_keyboard_get_key:
 ;-------------------------------------------------------------------------------
 irq64_network_ip_set:
 	; ustaw adres IP
-	mov	qword [variable_network_ip],	rbx
+	mov	dword [variable_network_ip],	ebx
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -559,7 +559,7 @@ irq64_network_ip_set:
 ;-------------------------------------------------------------------------------
 irq64_network_ip_get:
 	; pobierz adres IP
-	mov	rbx,	qword [variable_network_ip]
+	mov	ebx,	dword [variable_network_ip]
 
 	; koniec obsługi przerwania programowego
 	iretq

@@ -43,8 +43,7 @@ variable_network_table_rx_64		dq	VARIABLE_EMPTY
 variable_network_enabled		db	VARIABLE_TRUE
 variable_network_mac_filter		dq	0x0000FFFFFFFFFFFF
 
-; wartość ustalona do czasu utworzenia aplikacji do konfiguracji
-variable_network_ip			dq	0x00004000000A	; 10.0.0.64
+variable_network_ip			dd	0x00000000	; 0.0.0.0
 
 ; 64 bitowy kod
 [BITS 64]

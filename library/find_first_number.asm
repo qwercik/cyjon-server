@@ -21,21 +21,26 @@ VARIABLE_LIBRARY_FFN_NUMBER_HIGH	equ	0x39
 ; procedura pobiera od użytkownika ciąg znaków zakończony klawiszem ENTER o sprecyzowanej długości
 ; IN:
 ;	rcx - rozmiar bufora
-;	rsi - wskaźnik do bufora przechowującego pobrane znaki
+;	rdi - wskaźnik do bufora przechowującego znaki
 ; OUT:
-;	rcx - rozmiar pierwszego znalezionego "słowa"
-;	rsi - wskaźnik bezwzględny w ciągu do znalezionego słowa
+;	CF  - 0 jeśli, ok
+;	rcx - rozmiar pierwszej znalezionej liczby w znakach
+;	rdx - offset do pierwszej cyfry od początku poszukiwań
+;	rdi - wskaźnik bezwzględny w ciągu cyfr
 ;
 ; pozostałe rejestry zachowane
 library_find_first_number:
 	; zachowaj oryginalne rejestry
 	push	rax
 
+	; zapamiętaj początek wskaźnika
+	mov	rdx,	rdi
+
 .find:
 	; wszystko co nie jest cyfrą
-	cmp	byte [rsi],	VARIABLE_LIBRARY_FFN_NUMBER_LOW
+	cmp	byte [rdi],	VARIABLE_LIBRARY_FFN_NUMBER_LOW
 	jb	.leave
-	cmp	byte [rsi],	VARIABLE_LIBRARY_FFN_NUMBER_HIGH
+	cmp	byte [rdi],	VARIABLE_LIBRARY_FFN_NUMBER_HIGH
 	ja	.leave
 
 	; znaleziono piwerszy znak należący do słowa
@@ -43,7 +48,7 @@ library_find_first_number:
 
 .leave:
 	; przesuń wskaźnik bufora na następny znak
-	inc	rsi
+	inc	rdi
 
 	; kontynuuj
 	loop	.find
@@ -56,7 +61,12 @@ library_find_first_number:
 	; wylicz ilość znaków na liczbę
 
 	; zachowaj adres początku
-	push	rsi
+	push	rdi
+
+	; oblicz offset
+	mov	rax,	rdi
+	sub	rax,	rdx
+	mov	rdx,	rax
 
 	; wyczyść licznik
 	xor	rax,	rax
@@ -69,7 +79,7 @@ library_find_first_number:
 	ja	.ready
 
 	; przesuń wskaźnik na następny znak w buforze polecenia
-	inc	rsi
+	inc	rdi
 
 	; zwiększ licznik znaków przypadających na znalezione polecenie
 	inc	rax
@@ -85,14 +95,14 @@ library_find_first_number:
 	pop	rdi
 
 	; ustaw flagę
-	stc
+	clc
 
 	; koniec
 	jmp	.end
 
 .not_found:
 	; nie znaleziono słowa w ciągu znaków
-	clc
+	stc
 
 .end:
 	; przywróć oryginalne rejestry
