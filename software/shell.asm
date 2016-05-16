@@ -112,7 +112,7 @@ start:
 	xchg	cl,	byte [command_clear_count]
 
 	; nie znaleziono?
-	jnc	.noClear
+	jc	.noClear
 
 	; wyczyść ekran
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CLEAN	; procedura czyszcząca ekran
@@ -131,7 +131,7 @@ start:
 	xchg	cl,	byte [command_shell_count]
 
 	; nie znaleziono?
-	jnc	.noShell
+	jc	.noShell
 
 	; wyświetl informację o braku danego programu na partycji systemowej
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
@@ -151,7 +151,7 @@ start:
 	xchg	cl,	byte [command_init_count]
 
 	; nie znaleziono?
-	jnc	.noInit
+	jc	.noInit
 
 	; wyświetl informację o braku danego programu na partycji systemowej
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
@@ -171,7 +171,7 @@ start:
 	xchg	cl,	byte [command_login_count]
 
 	; nie znaleziono?
-	jnc	.noLogin
+	jc	.noLogin
 
 	; wyświetl informację o braku danego programu na partycji systemowej
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
@@ -191,7 +191,7 @@ start:
 	xchg	cl,	byte [command_exit_count]
 
 	; jeśli nie, kontynuuj
-	jnc	.noExit
+	jc	.noExit
 
 	; wyloguj z powłoki systemu
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL

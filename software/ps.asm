@@ -15,7 +15,8 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME			ps
-%define	VARIABLE_PROGRAM_VERSION		"v0.4"
+%define VARIABLE_PROGRAM_NAME_CHARS		2
+%define	VARIABLE_PROGRAM_VERSION		"v0.5"
 
 VARIABLE_PS_COLUMN_FIRST_WIDTH		equ	0x08
 
@@ -29,9 +30,34 @@ VARIABLE_PS_COLUMN_FIRST_WIDTH		equ	0x08
 [ORG VARIABLE_MEMORY_HIGH_REAL_ADDRESS]
 
 start:
-	; tablicę utwórz za programem
+	; pobierz przesłane argumenty
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_ARGS
 	mov	rdi,	end
+	call	library_align_address_up_to_page
+	int	STATIC_KERNEL_SERVICE
 
+	; czy arguymenty istnieją?
+	cmp	rcx,	0x02
+	jbe	.no_option
+
+	; pomiń nazwę procesu w argumentach
+	add	rdi,	VARIABLE_PROGRAM_NAME_CHARS
+	sub	rcx,	VARIABLE_PROGRAM_NAME_CHARS
+
+	; poszukaj argumentu
+	call	library_find_first_word
+	jc	.no_option	; brak argumentów
+
+	; sprawdź czy opcja obsługiwana
+	mov	rcx,	text_option_all_end - text_option_all
+	mov	rsi,	text_option_all
+	call	library_compare_string
+	jc	.no_option
+
+	; pokaż ukryte
+	mov	byte [variable_hidden_semaphore],	VARIABLE_TRUE
+
+.no_option:
 	; pobierz listę aktywnych procesów (prócz jądra systemu)
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_LIST
 	int	STATIC_KERNEL_SERVICE
@@ -59,6 +85,10 @@ start:
 	mov	bx,	STATIC_SERPENTINE_RECORD_BIT_DAEMON
 	bt	[rdi + 	VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	bx
 	jnc	.color_default
+
+	; wyświetlić ukryte/demony?
+	cmp	byte [variable_hidden_semaphore],	VARIABLE_FALSE
+	je	.hide
 
 	; demon, kolor ciemno szary
 	mov	ebx,	VARIABLE_COLOR_GRAY
@@ -107,7 +137,7 @@ start:
 	mov	dword [rsp],	VARIABLE_PS_COLUMN_FIRST_WIDTH	; rozmiar kolumny pierwszej
 	pop	rbx
 
-	; ustaw kursro w nowej pozycji
+	; ustaw kursor w nowej pozycji
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
 	int	STATIC_KERNEL_SERVICE
 
@@ -126,6 +156,7 @@ start:
 	mov	rsi,	text_paragraph
 	int	STATIC_KERNEL_SERVICE
 
+.hide:
 	; przywróć adres rekordu w tablicy
 	pop	rdi
 
@@ -140,6 +171,10 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
 	int	STATIC_KERNEL_SERVICE
 
+%include	"library/align_address_up_to_page.asm"
+%include	"library/find_first_word.asm"
+%include	"library/compare_string.asm"
+
 ; wczytaj lokalizacje programu systemu
 %push
 	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
@@ -147,5 +182,10 @@ start:
 	%strcat		%$include_program_locale,	"software/", %$process_name, "/locale/", %$system_locale, ".asm"
 	%include	%$include_program_locale
 %pop
+
+variable_hidden_semaphore	db	VARIABLE_FALSE
+
+text_option_all			db	"-x"
+text_option_all_end:
 
 end:

@@ -421,7 +421,7 @@ cyjon_virtual_file_system_find_file:
 	xchg	rcx,	rax
 
 	; czy ciągi były takie same?
-	jc	.found
+	jnc	.found
 
 	; koryguj wskaźnik na poczatek rekordu
 	sub	rdi,	0x18

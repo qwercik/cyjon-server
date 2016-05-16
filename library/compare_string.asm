@@ -15,13 +15,13 @@
 [BITS 64]
 
 ;===============================================================================
-; procedura ustawia domyślną macierz klawiszy (małe znaki)
+; procedura porównuje dwa ciągi
 ; IN:
 ;	rcx	- ilość znaków do porównania
 ;	rsi	- adres ciągu pierwszego
 ;	rdi	- adres ciągu drugiego
 ; OUT:
-;	CF	- jeśli obydwa ciągi poprawne
+;	CF	- 0 jeśli, ok
 ;
 ; wszystkie rejestry zachowane
 library_compare_string:
@@ -39,8 +39,8 @@ library_compare_string:
 	cmp	al,	byte [rdi]
 	je	.ok
 
-	; wyłącz flagę CF
-	clc
+	; włącz flagę CF
+	stc
 
 .end:
 	; przywróc oryginalne rejestry
@@ -59,8 +59,8 @@ library_compare_string:
 	; kontynuuj
 	loop	.loop
 
-	; ustaw flagę CF
-	stc
+	; wyłącz flagę CF
+	clc
 
 	; zakończ procedurę
 	jmp	.end
