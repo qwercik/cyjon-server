@@ -572,15 +572,18 @@ cyjon_network_i8254x_transmit_packet:
 	push	rax
 	push	rdi
 
+	; załaduj do bufora wskaźnik pakietu do wysłania
 	mov	rdi,	qword [variable_network_i8254x_tx_cache]
 	mov	rax,	rsi
 	stosq
 
+	; załaduj rozmiar pakietu
 	mov	rax,	rcx
 	bts	rax,	24	; EOP
 	bts	rax,	25	; IFCS
 	bts	rax,	27	; RS
 	stosq
+
 
 	mov	rdi,	qword [variable_network_i8254x_base_address]
 	xor	rax,	rax

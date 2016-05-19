@@ -28,8 +28,8 @@ VARIABLE_DAEMON_ARP_PLEN			equ	0x04	; IP
 VARIABLE_DAEMON_ARP_OPERATION_REQUEST		equ	0x01
 VARIABLE_DAEMON_ARP_OPERATION_ANSWER		equ	0x02
 
-text_daemon_arp_name				db	"daemon_network_arp"
-variable_daemon_arp_name_count			db	18
+text_daemon_arp_name				db	"network_arp"
+variable_daemon_arp_name_count			db	11
 
 ;debug
 align	0x0100

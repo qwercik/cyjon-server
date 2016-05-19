@@ -11,7 +11,7 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-%define	VARIABLE_KERNEL_VERSION			"0.563"
+%define	VARIABLE_KERNEL_VERSION			"0.565"
 %define	VARIABLE_KERNEL_LOCALE			en_US.ASCII
 
 VARIABLE_SELECTOR_TYPE_PROCESS			equ	0x0003

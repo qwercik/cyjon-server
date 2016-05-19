@@ -12,19 +12,35 @@
 ; nasm - http://www.nasm.us/
 
 ; rozmiary rekordów w tablicach
-VARIABLE_NETWORK_TABLE_MAX		equ	4096
-VARIABLE_NETWORK_TABLE_1024		equ	1024
-VARIABLE_NETWORK_TABLE_512		equ	512
-VARIABLE_NETWORK_TABLE_256		equ	256
-VARIABLE_NETWORK_TABLE_128		equ	128
-VARIABLE_NETWORK_TABLE_64		equ	64
+VARIABLE_NETWORK_TABLE_MAX			equ	4096
+VARIABLE_NETWORK_TABLE_1024			equ	1024
+VARIABLE_NETWORK_TABLE_512			equ	512
+VARIABLE_NETWORK_TABLE_256			equ	256
+VARIABLE_NETWORK_TABLE_128			equ	128
+VARIABLE_NETWORK_TABLE_64			equ	64
+
+VARIABLE_NETWORK_FRAME_ETHERNET_SIZE		equ	0x06 + 0x06 + 0x02	; sender MAC + target MAC + Ethernet Type
+VARIABLE_NETWORK_FRAME_ETHERNET_SIZE_TARGET	equ	0x06
+VARIABLE_NETWORK_FRAME_ETHERNET_SIZE_SENDER	equ	0x06
+VARIABLE_NETWORK_FRAME_ETHERNET_SIZE_TYPE	equ	0x02
+
+VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET	equ	0x00
+VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER	equ	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE_TARGET
+VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE	equ	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE_TARGET + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE_SENDER
+
+
+VARIABLE_NETWORK_FRAME_ARP_SIZE			equ	0x2A
+VARIABLE_NETWORK_FRAME_IP_SIZE			equ	0x14
+
+VARIABLE_NETWORK_FRAME_IP_PROTOCOL		equ	0x00
 
 VARIABLE_NETWORK_FRAME_MAC_DESTINATION	equ	VARIABLE_EMPTY
 VARIABLE_NETWORK_FRAME_MAC_SOURCE	equ	0x0006
 VARIABLE_NETWORK_FRAME_TYPE		equ	0x000C
 VARIABLE_NETWORK_FRAME_TYPE_ARP		equ	0x0608
+VARIABLE_NETWORK_FRAME_TYPE_IP		equ	0x0008
 VARIABLE_NETWORK_FRAME_DATA		equ	0x000E
-VARIABLE_NETWORK_FRAME_ARP_SIZE		equ	42 + 2 + 12	; 42 data, 2, type, 6*2 mac (source+target)
+VARIABLE_NETWORK_FRAME_DATA_IP_SIZE	equ	0x000E + 0x02	; word
 
 variable_network_i8254x_base_address	dq	VARIABLE_EMPTY
 variable_network_i8254x_irq		db	VARIABLE_EMPTY
@@ -200,11 +216,13 @@ network:
 	; koniec obsługi przerwania sprzętowego
 	iretq
 
+;-------------------------------------------------------------------------------
 .transfer:
 	; czy wystąpiło jednocześnie wysłanie pakietu?
 	bt	eax,	7
 	jnc	.end	; nie
 
+;-------------------------------------------------------------------------------
 .receive:
 	; zachowaj oryginalne rejestry
 	push	rax
@@ -224,6 +242,10 @@ network:
 	; ramka typu ARP
 	cmp	word [rsi + VARIABLE_NETWORK_FRAME_TYPE],	VARIABLE_NETWORK_FRAME_TYPE_ARP
 	je	.arp
+
+	; ramka typu IP
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_TYPE],	VARIABLE_NETWORK_FRAME_TYPE_IP
+	je	.ip
 
 .rx_end:
 	; przywóć oryginalne rejestry
@@ -246,29 +268,53 @@ network:
 	; pakiet obsłużony
 	jmp	.end
 
+;-------------------------------------------------------------------------------
 .arp:
 	; załaduj ramkę do bufora
+	mov	rax,	VARIABLE_NETWORK_TABLE_64
+	mov	rbx,	VARIABLE_NETWORK_FRAME_ARP_SIZE
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
 	mov	rdi,	qword [variable_network_table_rx_64]
 
-	; ilość rekordów
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
+	; załaduj ramkę do bufora
+	call	network_frame_move
 
-.arp_loop:
-	; pusty rekord
-	cmp	qword [rdi],	VARIABLE_EMPTY
-	je	.arp_found_empty
-
-	; następny rekord
-	add	rdi,	VARIABLE_NETWORK_TABLE_64
-	loop	.arp_loop
-
-	; brak miejsca w buforze
+	; koniec
 	jmp	.rx_end
 
-.arp_found_empty:
-	; rozmiar ramki
-	mov	rcx,	42
+;-------------------------------------------------------------------------------
+.ip:
+	; protokół ICMP?
+	;cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_PROTOCOL],	VARIABLE_DAEMON_ICMP_PROTOCOL
+	;je	.icmp
+
+	; brak obsługi
+	jmp	.rx_end
+
+.ip_move:
+	; załaduj ramkę do bufora
+	call	network_frame_move
+
+	; koniec
+	jmp	.rx_end
+
+network_frame_move:
+	; szukaj wolnego miejsca
+	cmp	qword [rdi],	VARIABLE_EMPTY
+	je	.found_empty
+
+	; następny rekord
+	add	rdi,	rax
+	loop	network_frame_move
+
+.end:
+	; brak miejsca w buforze
+	ret
+
+.found_empty:
+	; kopiuj
+	mov	rcx,	rbx
 	rep	movsb
 
 	; koniec obsługi
-	jmp	.rx_end
+	ret
