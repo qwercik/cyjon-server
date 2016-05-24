@@ -11,19 +11,18 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-VARIABLE_DAEMON_ARP_HTYPE						equ	0x0100	; 0x0001
-VARIABLE_DAEMON_ARP_PTYPE						equ	0x0008	; 0x0800
-VARIABLE_DAEMON_ARP_HLEN						equ	0x06	; MAC
-VARIABLE_DAEMON_ARP_PLEN						equ	0x04	; IP
-VARIABLE_DAEMON_ARP_OPERATION_REQUEST					equ	0x01
-VARIABLE_DAEMON_ARP_OPERATION_ANSWER					equ	0x02
+VARIABLE_DAEMON_ARP_HTYPE		equ	0x0100	; 0x0001
+VARIABLE_DAEMON_ARP_PTYPE		equ	0x0008	; 0x0800
+VARIABLE_DAEMON_ARP_HLEN		equ	0x06	; MAC
+VARIABLE_DAEMON_ARP_PLEN		equ	0x04	; IP
+VARIABLE_DAEMON_ARP_OPERATION_REQUEST	equ	0x01
+VARIABLE_DAEMON_ARP_OPERATION_ANSWER	equ	0x02
 
-text_daemon_arp_name							db	"network_arp"
-variable_daemon_arp_name_count						db	11
+text_daemon_arp_name			db	"network_arp"
+variable_daemon_arp_name_count		db	11
 
-;debug
-align	0x0100
-variable_daemon_arp_frame	times VARIABLE_NETWORK_FRAME_ARP_SIZE	db	VARIABLE_EMPTY
+variable_daemon_arp_semaphore		db	VARIABLE_FALSE
+variable_daemon_arp_cache		dq	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -36,10 +35,19 @@ daemon_arp:
 	cmp	byte [variable_network_enabled],	VARIABLE_FALSE
 	je	.stop	; nie
 
+	; przydziel przestrzeń pod bufor
+	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.stop	; brak miejsca
+
+	; ustaw przestrzeń bufora
+	mov	qword [variable_daemon_arp_cache],	rdi
+
+.restart:
 	; ilość rekordów w tablicy
 	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
 	; wskaźnik do adresu tablicy
-	mov	rsi,	qword [variable_network_table_rx_64]
+	mov	rsi,	qword [variable_daemon_arp_cache]
 
 .search:
 	; szukaj ramki ARP
@@ -56,7 +64,7 @@ daemon_arp:
 	hlt
 
 	; koniec
-	jmp	daemon_arp
+	jmp	.restart
 
 .found:
 	; zachowaj licznik
@@ -84,50 +92,37 @@ daemon_arp:
 	cmp	rax,	qword [variable_network_ip]
 	jne	.mismatch	; nie
 
-	; zachowaj wskanik do oryginalnego pakietu
-	push	rsi
-
-	; skopiuj pakiet do bufora
-	mov	rdi,	variable_daemon_arp_frame
-	mov	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_SIZE
-	rep	movsb
-
 	; zamień miejscami nadawcę <> odbiorcę
-	mov	rdi,	variable_daemon_arp_frame
-	mov	rax,	qword [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC]
+	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC]
 	push	rax	; zapamiętaj nadawcę
-	mov	bx,	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC + VARIABLE_QWORD_SIZE]
-	xchg	rax,	qword [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_MAC]
-	xchg	bx,	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_MAC + VARIABLE_QWORD_SIZE]
-	mov	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC + VARIABLE_QWORD_SIZE],	bx
+	mov	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC + VARIABLE_QWORD_SIZE]
+	xchg	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_MAC]
+	xchg	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_MAC + VARIABLE_QWORD_SIZE]
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC + VARIABLE_QWORD_SIZE],	bx
 
 	; zmień typ operacji na odpowiedź
-	mov	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_OPCODE],	0x0200
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_OPCODE],	0x0200
 
 	; w odpowiedzi podaj nasz adres MAC
 	mov	rdx,	0xFFFF000000000000
 	and	rax,	rdx
 	or	rax,	qword [variable_network_i8254x_mac_address]
-	mov	qword [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC],	rax
+	mov	qword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC],	rax
 
 	; odpowiedź wyślij do
 	pop	rax
 	and	rax,	qword [variable_network_mac_filter]
-	mov	qword [rdi],	rax
+	mov	qword [rsi],	rax
 
 	; odpowiedź od
 	mov	rax,	qword [variable_network_i8254x_mac_address]
-	mov	dword [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER],	eax
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER],	eax
 	shr	rax,	32
-	mov	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE],	ax
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE],	ax
 
 	; wyślij
 	mov	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_SIZE
-	mov	rsi,	rdi
 	call	cyjon_network_i8254x_transmit_packet
-
-	; usuń przetworzony pakiet z bufora
-	pop	rsi
 
 .mismatch:
 	; ramka ARP jest nieobsługiwana, usuń rekord

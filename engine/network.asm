@@ -301,13 +301,17 @@ network:
 
 ;-------------------------------------------------------------------------------
 .arp:
-	; załaduj ramkę do bufora
+	; bufor demona ARP gotowy?
+	cmp	qword [variable_daemon_arp_cache],	VARIABLE_EMPTY
+	je	.rx_end	; nie, zignoruj pakiet
+
+	; załaduj pakiet do bufora
 	mov	rax,	VARIABLE_NETWORK_TABLE_64
 	mov	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_SIZE
 	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
-	mov	rdi,	qword [variable_network_table_rx_64]
+	mov	rdi,	qword [variable_daemon_arp_cache]
 
-	; załaduj ramkę do bufora
+	; załaduj pakiet do bufora
 	call	network_frame_move
 
 	; koniec
@@ -316,27 +320,11 @@ network:
 ;-------------------------------------------------------------------------------
 .ip:
 	; protokół ICMP?
-	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
-	je	.icmp
+	; cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
+	; je	.icmp
 
 	; brak obsługi
 	jmp	.rx_end
-
-; debug
-align 0x0100
-
-
-.icmp:
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
-	mov	rcx,	1
-	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	mov	rsi,	text_icmp
-	call	cyjon_screen_print_string
-
-	; koniec
-	jmp	.rx_end
-
-text_icmp	db	".", VARIABLE_ASCII_CODE_TERMINATOR
 
 network_frame_move:
 	; szukaj wolnego miejsca

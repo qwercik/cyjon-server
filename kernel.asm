@@ -123,10 +123,10 @@ kernel:
 	call	cyjon_process_init_daemon
 
 	; uruchom demona - protokół icmp
-	movzx	rcx,	byte [variable_daemon_icmp_name_count]
-	mov	rdx,	daemon_icmp
-	mov	rsi,	text_daemon_icmp_name
-	call	cyjon_process_init_daemon
+	;movzx	rcx,	byte [variable_daemon_icmp_name_count]
+	;mov	rdx,	daemon_icmp
+	;mov	rsi,	text_daemon_icmp_name
+	;call	cyjon_process_init_daemon
 
 	; uruchom pierwszy proces "init"
 	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
@@ -154,7 +154,7 @@ kernel:
 
 %include	"engine/daemon/daemon_garbage_collector.asm"
 %include	"engine/daemon/daemon_arp.asm"
-%include	"engine/daemon/daemon_icmp.asm"
+;%include	"engine/daemon/daemon_icmp.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/network/i8254x.asm"
