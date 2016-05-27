@@ -302,7 +302,7 @@ network:
 ;-------------------------------------------------------------------------------
 .arp:
 	; bufor demona ARP gotowy?
-	cmp	qword [variable_daemon_arp_cache],	VARIABLE_EMPTY
+	cmp	qword [variable_daemon_arp_semaphore],	VARIABLE_FALSE
 	je	.rx_end	; nie, zignoruj pakiet
 
 	; załaduj pakiet do bufora
@@ -320,12 +320,33 @@ network:
 ;-------------------------------------------------------------------------------
 .ip:
 	; protokół ICMP?
-	; cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
-	; je	.icmp
+	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
+	je	.icmp
 
 	; brak obsługi
 	jmp	.rx_end
 
+;-------------------------------------------------------------------------------
+.icmp:
+	; bufor demona ARP gotowy?
+	cmp	qword [variable_daemon_icmp_semaphore],	VARIABLE_FALSE
+	je	.rx_end	; nie, zignoruj pakiet
+
+	; załaduj pakiet do bufora
+	mov	rax,	VARIABLE_NETWORK_TABLE_128
+	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
+	xchg	bl,	bh
+	add	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_128
+	mov	rdi,	qword [variable_daemon_icmp_cache]
+
+	; załaduj pakiet do bufora
+	call	network_frame_move
+
+	; koniec
+	jmp	.rx_end
+
+;===============================================================================
 network_frame_move:
 	; szukaj wolnego miejsca
 	cmp	qword [rdi],	VARIABLE_EMPTY

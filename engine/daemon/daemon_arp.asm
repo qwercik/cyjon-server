@@ -18,7 +18,7 @@ VARIABLE_DAEMON_ARP_PLEN		equ	0x04	; IP
 VARIABLE_DAEMON_ARP_OPERATION_REQUEST	equ	0x01
 VARIABLE_DAEMON_ARP_OPERATION_ANSWER	equ	0x02
 
-text_daemon_arp_name			db	"network_arp"
+variable_daemon_arp_name		db	"network_arp"
 variable_daemon_arp_name_count		db	11
 
 variable_daemon_arp_semaphore		db	VARIABLE_FALSE
@@ -26,9 +26,6 @@ variable_daemon_arp_cache		dq	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
-
-; debug
-align 0x0100
 
 daemon_arp:
 	; usługa sieciowa załączona?
@@ -50,9 +47,9 @@ daemon_arp:
 	mov	rsi,	qword [variable_daemon_arp_cache]
 
 .search:
-	; szukaj ramki ARP
-	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE],	VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE_ARP
-	je	.found
+	; szukaj ramki w cache
+	cmp	qword [rsi],	 VARIABLE_EMPTY
+	ja	.found
 
 .continue:
 	; następny rekord

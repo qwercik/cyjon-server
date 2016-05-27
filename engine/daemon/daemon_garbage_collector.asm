@@ -11,7 +11,7 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-text_daemon_garbage_collector_name		db	"garbage_collector"
+variable_daemon_garbage_collector_name		db	"garbage_collector"
 variable_daemon_garbage_collector_name_count	db	17
 
 ; 64 Bitowy kod programu
