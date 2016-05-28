@@ -328,7 +328,7 @@ network:
 
 ;-------------------------------------------------------------------------------
 .icmp:
-	; bufor demona ARP gotowy?
+	; bufor demona ICMP gotowy?
 	cmp	qword [variable_daemon_icmp_semaphore],	VARIABLE_FALSE
 	je	.rx_end	; nie, zignoruj pakiet
 
@@ -349,7 +349,7 @@ network:
 ;===============================================================================
 network_frame_move:
 	; szukaj wolnego miejsca
-	cmp	qword [rdi],	VARIABLE_EMPTY
+	cmp	byte [rdi],	VARIABLE_FALSE
 	je	.found_empty
 
 	; następny rekord
@@ -361,9 +361,21 @@ network_frame_move:
 	ret
 
 .found_empty:
+	; zachowaj wskaźnik początku rekordu
+	push	rdi
+
+	; pomiń flagę
+	inc	rdi
+
 	; kopiuj
 	mov	rcx,	rbx
 	rep	movsb
+
+	; przywróć wskaźnik
+	pop	rdi
+
+	; ustaw flagę rekordu na aktywną
+	mov	byte [rdi],	VARIABLE_TRUE
 
 	; koniec obsługi
 	ret

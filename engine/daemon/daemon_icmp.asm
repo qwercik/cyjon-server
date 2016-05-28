@@ -49,9 +49,9 @@ daemon_icmp:
 	mov	rsi,	qword [variable_daemon_icmp_cache]
 
 .search:
-	; szukaj ramki ARP
-	cmp	qword [rsi],	VARIABLE_EMPTY
-	ja	.found
+	; szukaj aktywnego rekordu
+	cmp	byte [rsi],	VARIABLE_TRUE
+	je	.found
 
 .continue:
 	; następny rekord
@@ -66,6 +66,9 @@ daemon_icmp:
 	jmp	.restart
 
 .found:
+	; przesuń wkskaźnik na ramkę
+	inc	rsi
+
 	; zachowaj licznik
 	push	rcx
 
@@ -133,15 +136,11 @@ daemon_icmp:
 	call	cyjon_network_i8254x_transmit_packet
 
 .mismatch:
-	; ramka ARP jest nieobsługiwana, usuń rekord
-	mov	rcx,	VARIABLE_NETWORK_TABLE_64 / VARIABLE_QWORD_SIZE
-	add	rsi,	VARIABLE_NETWORK_TABLE_64
+	; przesuń wkskaźnik na flagę ramki
+	dec	rsi
 
-.clear:
-	mov	qword [rsi - VARIABLE_QWORD_SIZE],	VARIABLE_EMPTY
-	sub	rsi,	VARIABLE_QWORD_SIZE
-	; wyczyść pozostałą część rekordu
-	loop	.clear
+	; ramka ARP jest nieobsługiwana, wyłącz rekord
+	mov	byte [rsi],	VARIABLE_FALSE
 
 	; przywróć licznik
 	pop	rcx
