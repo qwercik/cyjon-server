@@ -119,6 +119,14 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_IP_GET
 	je	irq64_network_ip_get
 
+	; zarezerwuj port na interfejsie sieciowym?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_ASSIGN
+	je	irq64_network_port_assign
+
+	; zwolnij port na interfejsie sieciowym?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_ASSIGN
+	je	irq64_network_port_assign
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -548,7 +556,8 @@ irq64_keyboard_get_key:
 	; koniec obsługi przerwania programowego
 	iretq
 
-;-------------------------------------------------------------------------------
+;===============================================================================
+;===============================================================================
 irq64_network_ip_set:
 	; ustaw adres IP
 	mov	dword [variable_network_ip],	ebx
@@ -563,3 +572,16 @@ irq64_network_ip_get:
 
 	; koniec obsługi przerwania programowego
 	iretq
+
+;-------------------------------------------------------------------------------
+irq64_network_port_assign:
+	
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+irq64_network_port_release:
+	
+
+	; koniec obsługi przerwania programowego
+	iretq	

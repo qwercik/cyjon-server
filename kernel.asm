@@ -128,6 +128,12 @@ kernel:
 	mov	rsi,	variable_daemon_icmp_name
 	call	cyjon_process_init_daemon
 
+	; uruchom demona - protokół http
+	movzx	rcx,	byte [variable_daemon_http_name_count]
+	mov	rdx,	daemon_http
+	mov	rsi,	variable_daemon_http_name
+	call	cyjon_process_init_daemon
+
 	; uruchom pierwszy proces "init"
 	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
 	mov	rsi,	files_table + ( VARIABLE_QWORD_SIZE * 0x04 )	; wskaźnik do nazwy pliku
@@ -155,6 +161,7 @@ kernel:
 %include	"engine/daemon/daemon_garbage_collector.asm"
 %include	"engine/daemon/daemon_arp.asm"
 %include	"engine/daemon/daemon_icmp.asm"
+%include	"engine/daemon/daemon_http.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/network/i8254x.asm"

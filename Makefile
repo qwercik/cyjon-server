@@ -12,6 +12,7 @@ all:
 	$(ASM) $(SOFTWARE)/ps.asm		-o $(BUILD)/ps.bin
 	$(ASM) $(SOFTWARE)/ip.asm		-o $(BUILD)/ip.bin
 	$(ASM) $(SOFTWARE)/help.asm		-o $(BUILD)/help.bin
+	$(ASM) $(SOFTWARE)/httpd.asm		-o $(BUILD)/httpd.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -22,9 +23,10 @@ all:
 
 clean:
 	rm -f	$(BUILD)/stage2.bin	\
-		$(BUILD)/init.bin		\
+		$(BUILD)/init.bin	\
 		$(BUILD)/login.bin 	\
 		$(BUILD)/shell.bin 	\
 		$(BUILD)/ps.bin		\
 		$(BUILD)/ip.bin		\
-		$(BUILD)/help.bin
+		$(BUILD)/help.bin	\
+		$(BUILD)/httpd.bin

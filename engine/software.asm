@@ -112,6 +112,13 @@ files_table:
 	dq	file_help_end
 	db	'help'
 
+	; plik
+	dq	5
+	dq	file_httpd_end - file_httpd
+	dq	file_httpd
+	dq	file_httpd_end
+	db	'httpd'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -132,3 +139,6 @@ file_ip_end:
 
 file_help:		incbin	'build/help.bin'
 file_help_end:
+
+file_httpd:		incbin	'build/httpd.bin'
+file_httpd_end:

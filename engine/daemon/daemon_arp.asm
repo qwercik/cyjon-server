@@ -37,8 +37,9 @@ daemon_arp:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.stop	; brak miejsca
 
-	; ustaw przestrzeń bufora
+	; ustaw przestrzeń bufora i flagę dostępności
 	mov	qword [variable_daemon_arp_cache],	rdi
+	mov	byte [variable_daemon_arp_semaphore],	VARIABLE_TRUE
 
 .restart:
 	; ilość rekordów w tablicy
@@ -64,11 +65,11 @@ daemon_arp:
 	jmp	.restart
 
 .found:
-	; przesuń wkskaźnik na ramkę
-	inc	rsi
-
 	; zachowaj licznik
 	push	rcx
+
+	; przesuń wkskaźnik na ramkę
+	inc	rsi
 
 	; Hardware Type
 	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_FIELD_HTYPE],	VARIABLE_DAEMON_ARP_HTYPE

@@ -39,8 +39,9 @@ daemon_icmp:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.stop	; brak miejsca
 
-	; ustaw przestrzeń bufora
+	; ustaw przestrzeń bufora i flagę dostępności
 	mov	qword [variable_daemon_icmp_cache],	rdi
+	mov	byte [variable_daemon_icmp_semaphore],	VARIABLE_TRUE
 
 .restart:
 	; ilość rekordów w tablicy
@@ -66,11 +67,11 @@ daemon_icmp:
 	jmp	.restart
 
 .found:
-	; przesuń wkskaźnik na ramkę
-	inc	rsi
-
 	; zachowaj licznik
 	push	rcx
+
+	; przesuń wkskaźnik na ramkę
+	inc	rsi
 
 	; ustaw ramkę jako odpowiedź
 	mov	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_DAEMON_ICMP_TYPE],	VARIABLE_DAEMON_ICMP_TYPE_REPLY
