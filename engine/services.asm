@@ -46,7 +46,7 @@ irq64:
 
 .process:
 	; proces zakończył działanie?
-	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	je	irq64_process_end
 
 	; uruchomić nowy proces?
@@ -70,6 +70,10 @@ irq64:
 	; pobrać własny numer PID?
 	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_PID
 	je	irq64_process_pid
+
+	; zakończyć proces o podanym PID?
+	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	je	irq64_process_kill
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -136,6 +140,7 @@ irq64_process_end:
 	; zatrzymaj aktualnie uruchomiony proces
 	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
 
+.prepared:
 	; ustaw flagę "proces zakończony", "rekord nieaktywny"
 	and	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	~STATIC_SERPENTINE_RECORD_FLAG_ACTIVE
 	or	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	STATIC_SERPENTINE_RECORD_FLAG_CLOSED
@@ -254,7 +259,7 @@ irq64_process_list:
 	; zamień na strony
 	shr	rax,	VARIABLE_DIVIDE_BY_4096	; VARIABLE_MEMORY_PAGE_SIZE
 
-	; zwiększ o jedną, jeśli proces prosi o utworzenie tablicy nie od pełnego adresu tj. F000
+	; zwiększ o jedną, jeśli proces prosi o utworzenie tablicy nie od pełnego adresu tj. 0xF000
 	inc	rax
 	mov	rcx,	rax	; załaduj do licznika
 
@@ -299,7 +304,7 @@ irq64_process_list:
 	mov	rsi,	qword [rsi + VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE]
 
 	; sprawdź czy istnieje dalsza część serpentyny
-	cmp	rsi,	VARIABLE_EMPTY
+	cmp	rsi,	qword [variable_multitasking_serpentine_start_address]
 	je	.terminate	; koniec
 
 	; zresetuj ilość rekordów na stronę
@@ -424,6 +429,95 @@ irq64_process_pid:
 
 	; koniec obsługi przerwania programowego
 	iretq
+
+;-------------------------------------------------------------------------------
+irq64_process_kill:
+	; zachowaj oryginalne rejestry
+	push	rbx
+	push	rdi
+
+	; ktoś chce ubić jądro systemu? good luck
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.easter_egg
+
+	; ustaw wskaźnik na początek serpentyny
+	mov	rdi,	qword [variable_multitasking_serpentine_start_address]
+
+	; ustaw liczniki
+	mov	rbx,	( VARIABLE_MEMORY_PAGE_SIZE - 0x08 ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+
+	; sprawdź pierwszy rekord
+	jmp	.check
+
+.continue:
+	; mniejsz ilość rekordów do przeszukania w tej części serpentyny
+	dec	rbx
+	jnz	.check
+
+	; załaduj adres kontynuacji serpentyny
+	and	di,	0xF000
+	mov	rdi,	qword [rdi + VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE]
+
+	; wróciliśmy do początku?
+	cmp	rdi,	qword [variable_multitasking_serpentine_start_address]
+	je	.lost
+
+	; zresetuj licznik rekordów na stronę
+	mov	rbx,	( VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE ) / VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+
+.check:
+	; sprawdź PID procesu (rekordu)
+	cmp	qword [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.PID],	rcx
+	je	.found
+
+	; przesuń wskaźnik na następny rekord
+	add	rdi,	VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
+
+	; sprawdź pozostałe rekordy
+	jmp	.continue
+
+.found:
+	; sprawdź czy użytkownik chce zabić demona
+	mov	bx,	STATIC_SERPENTINE_RECORD_BIT_DAEMON
+	bt	word [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	bx
+	jc	.prohibited_operation
+
+	; ustaw flagę rekordu "proces zakończony", "rekord nieaktywny"
+	and	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	~STATIC_SERPENTINE_RECORD_FLAG_ACTIVE
+	or	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	STATIC_SERPENTINE_RECORD_FLAG_CLOSED
+
+	; proces zostanie zamknięty
+	jmp	.end
+
+.lost:
+	; nie znaleziono podanej PID procesu w tablicy serpentyny
+	xor	rcx,	rcx	; zwróć informacje o tym
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rbx
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+.prohibited_operation:
+	; wyświetl ostrzeżenie
+	mov	bl,	VARIABLE_COLOR_RED
+	mov	cl,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_process_prohibited_operation
+	call	cyjon_screen_print_string
+
+	; zniszcz proces
+	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
+	jmp	irq64_process_end.prepared
+
+.easter_egg:
+	; wymyśli się coś ciekawego
+	cli
+
+	jmp	$
 
 ;===============================================================================
 ;===============================================================================

@@ -32,3 +32,6 @@ text_vfs_ready					db	" Virtual File System, ready.", VARIABLE_ASCII_CODE_RETURN
 text_vfs_fail					db	"VFS: Can't initialize file system.", VARIABLE_PANIC
 text_vfs_no_memory				db	"VFS: There is not enough memory.", VARIABLE_PANIC
 text_nic_i8254x					db	" Network controller Intel 82540EM, MAC ", VARIABLE_ASCII_CODE_TERMINATOR
+
+; błędy procesów
+text_process_prohibited_operation		db	"Prohibited operation, process destroyed.", VARIABLE_ASCII_CODE_RETURN

@@ -59,7 +59,7 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 	; zakończ działanie procesu/programu
-	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
 
 %include	'library/input.asm'

@@ -67,7 +67,7 @@ start:
 
 .end:
 	; wyjdź z programu
-	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
 
 command_table:
@@ -84,6 +84,9 @@ command_table:
 
 	db	'ip     '
 	dq	text_ip
+
+	db	'kill   '
+	dq	text_kill
 
 	db	'ps     '
 	dq	text_ps

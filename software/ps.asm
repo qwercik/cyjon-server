@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME			ps
-%define VARIABLE_PROGRAM_NAME_CHARS		2
+%define	VARIABLE_PROGRAM_NAME_CHARS		2
 %define	VARIABLE_PROGRAM_VERSION		"v0.5"
 
 VARIABLE_PS_COLUMN_FIRST_WIDTH		equ	0x08
@@ -168,7 +168,7 @@ start:
 	jne	.loop
 
 	; koniec programu
-	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
 
 %include	"library/align_address_up_to_page.asm"

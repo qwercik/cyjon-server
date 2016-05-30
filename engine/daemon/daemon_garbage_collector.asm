@@ -44,14 +44,16 @@ daemon_garbage_collector:
 	pop	rdi
 
 .no_args:
+	; wyłącz przerwania
+	cli
+	
 	; wyczyść rekord w tablicy
-	mov	qword [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	VARIABLE_EMPTY
-
-	; wyczyść nazwę pliku z rekordu
 	xor	al,	al
-	mov	rcx,	VARIABLE_TABLE_SERPENTINE_RECORD.ARGS - VARIABLE_TABLE_SERPENTINE_RECORD.NAME
-	add	rdi,	VARIABLE_TABLE_SERPENTINE_RECORD.NAME
+	mov	rcx,	VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
 	rep	stosb
+
+	; włącz przerwania
+	sti
 
 	; zwolnij pamięć zajętą przez proces
 	mov	rdi,	rbx	; załaduj adres tablicy PML4 procesu

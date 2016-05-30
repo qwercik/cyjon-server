@@ -194,7 +194,7 @@ start:
 	jc	.noExit
 
 	; wyloguj z powłoki systemu
-	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
 
 .noExit:

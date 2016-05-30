@@ -67,7 +67,7 @@ multitasking:
 	stosq
 
 	; przy pierwszym przełączeniu procesów, zostanie uzupełniony poprawną wartością
-	add	rdi,	0x08	; pomiń
+	add	rdi,	VARIABLE_QWORD_SIZE	; pomiń
 
 	; zapisz flagi procesu
 	mov	rax,	STATIC_SERPENTINE_RECORD_FLAG_USED | STATIC_SERPENTINE_RECORD_FLAG_ACTIVE | STATIC_SERPENTINE_RECORD_FLAG_DAEMON
@@ -90,6 +90,10 @@ multitasking:
 	inc	qword [variable_multitasking_serpentine_record_counter_left_in_page]
 	inc	qword [variable_multitasking_serpentine_record_counter_handle]
 	inc	qword [variable_multitasking_pid_value_next]
+
+	; połącz koniec serpentyny z początkiem
+	mov	rdi,	qword [variable_multitasking_serpentine_start_address]
+	mov	qword [rdi + VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_QWORD_SIZE],	rdi
 
 	; włącz przerwanie sprzętowe planisty
 	mov	cx,	0

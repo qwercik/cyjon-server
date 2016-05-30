@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		ip
-%define VARIABLE_PROGRAM_NAME_CHARS	2
+%define	VARIABLE_PROGRAM_NAME_CHARS	2
 %define	VARIABLE_PROGRAM_VERSION	"v0.3"
 
 ; 64 Bitowy kod programu
@@ -34,7 +34,7 @@ start:
 	call	library_align_address_up_to_page
 	int	STATIC_KERNEL_SERVICE
 
-	; czy arguymenty istnieją?
+	; czy argumenty istnieją?
 	cmp	rcx,	0x02
 	jbe	.no_option
 
@@ -145,7 +145,7 @@ start:
 
 .end:
 	; koniec działania procesu
-	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_KILL
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
 
 .ip_error:

@@ -30,7 +30,7 @@ VARIABLE_HTTPD_PORT_DEFAULT		equ	80
 
 start:
 	; zakończ proces
-	xor	ax,	ax
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
 
 ; wczytaj lokalizacje programu systemu

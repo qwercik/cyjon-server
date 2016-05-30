@@ -405,7 +405,7 @@ network:
 	cmp	byte [variable_daemon_http_semaphore],	VARIABLE_FALSE
 	je	.rx_end	; nie, zignoruj pakiet
 
-	; załaduj pakiet do bufora
+	; załaduj pakiet do bufora demona HTTP
 	mov	rax,	VARIABLE_NETWORK_TABLE_2048
 	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
 	xchg	bl,	bh

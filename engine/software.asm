@@ -119,6 +119,13 @@ files_table:
 	dq	file_httpd_end
 	db	'httpd'
 
+	; plik
+	dq	4
+	dq	file_kill_end - file_kill
+	dq	file_kill
+	dq	file_kill_end
+	db	'kill'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -142,3 +149,6 @@ file_help_end:
 
 file_httpd:		incbin	'build/httpd.bin'
 file_httpd_end:
+
+file_kill:		incbin	'build/kill.bin'
+file_kill_end:
