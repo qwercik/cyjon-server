@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		httpd
-%define	VARIABLE_PROGRAM_VERSION	"v0.1"
+%define	VARIABLE_PROGRAM_VERSION	"v0.2"
 
 VARIABLE_HTTPD_PORT_DEFAULT		equ	80
 
@@ -29,9 +29,45 @@ VARIABLE_HTTPD_PORT_DEFAULT		equ	80
 [ORG VARIABLE_MEMORY_HIGH_REAL_ADDRESS]
 
 start:
+	; wyrównaj adres przestrzeni do pełnej strony
+	mov	rdi,	end
+	call	library_align_address_up_to_page
+
+	xchg	bx,	bx
+
+	; zaalokuj przestrzeń pamięci pod zapytnia od klientów
+	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_MEMORY_ALLOCATE
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_MEMORY_PAGE_SIZE
+	int	STATIC_KERNEL_SERVICE
+
+	; zarezerwuj numer portu
+	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_ASSIGN
+	mov	rcx,	VARIABLE_HTTPD_PORT_DEFAULT
+	int	STATIC_KERNEL_SERVICE
+
+	; wyświetl informacje o uruchomionym serwerze www
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
+	mov	bl,	VARIABLE_COLOR_DEFAULT
+	mov	rcx,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_port_start
+	int	STATIC_KERNEL_SERVICE
+
+	; numer portu
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
+	mov	bl,	VARIABLE_COLOR_WHITE
+	mov	cx,	0x000A
+	mov	r8,	VARIABLE_HTTPD_PORT_DEFAULT
+	int	STATIC_KERNEL_SERVICE
+
+	xchg	bx,	bx
+	jmp	$
+
 	; zakończ proces
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
+
+%include	"library/align_address_up_to_page.asm"
 
 ; wczytaj lokalizacje programu systemu
 %push
@@ -40,3 +76,5 @@ start:
 	%strcat		%$include_program_locale,	"software/", %$process_name, "/locale/", %$system_locale, ".asm"
 	%include	%$include_program_locale
 %pop
+
+end:

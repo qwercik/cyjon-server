@@ -389,29 +389,16 @@ network:
 ;-------------------------------------------------------------------------------
 .tcp:
 	; sprawdź czy obsługiwany rozmiar ramki
-	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_WINDOW_SIZE],	VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_BYTE_SIZE
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_WINDOW_SIZE],	VARIABLE_NETWORK_TABLE_MAX
 	jae	.rx_end	; nie, zignoruj pakiet
 
-	; prawdopodobne połączenie HTTP?
-	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_TARGET],	VARIABLE_NETWORK_PORT_HTTP
-	je	.http	; nie, zignoruj pakiet
-
-	; koniec
-	jmp	.rx_end
-
-;-------------------------------------------------------------------------------
-.http:
-	; sprawdź czy demon HTTP włączony
-	cmp	byte [variable_daemon_http_semaphore],	VARIABLE_FALSE
-	je	.rx_end	; nie, zignoruj pakiet
-
-	; załaduj pakiet do bufora demona HTTP
-	mov	rax,	VARIABLE_NETWORK_TABLE_2048
+	; załaduj pakiet do bufora demona TCP
+	mov	rax,	VARIABLE_NETWORK_TABLE_MAX
 	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
 	xchg	bl,	bh
 	add	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_2048
-	mov	rdi,	qword [variable_daemon_http_cache]
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_MAX
+	mov	rdi,	qword [variable_daemon_tcp_cache]
 
 	; załaduj pakiet do bufora
 	call	network_frame_move

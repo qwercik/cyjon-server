@@ -128,10 +128,10 @@ kernel:
 	mov	rsi,	variable_daemon_icmp_name
 	call	cyjon_process_init_daemon
 
-	; uruchom demona - protokół http
-	movzx	rcx,	byte [variable_daemon_http_name_count]
-	mov	rdx,	daemon_http
-	mov	rsi,	variable_daemon_http_name
+	; uruchom demona - protokół tcp
+	movzx	rcx,	byte [variable_daemon_tcp_name_count]
+	mov	rdx,	daemon_tcp
+	mov	rsi,	variable_daemon_tcp_name
 	call	cyjon_process_init_daemon
 
 	; uruchom pierwszy proces "init"
@@ -161,7 +161,7 @@ kernel:
 %include	"engine/daemon/daemon_garbage_collector.asm"
 %include	"engine/daemon/daemon_arp.asm"
 %include	"engine/daemon/daemon_icmp.asm"
-%include	"engine/daemon/daemon_http.asm"
+%include	"engine/daemon/daemon_tcp.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/network/i8254x.asm"

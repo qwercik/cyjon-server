@@ -36,7 +36,7 @@ start:
 	call	library_align_address_up_to_page
 	int	STATIC_KERNEL_SERVICE
 
-	; czy arguymenty istnieją?
+	; czy argumenty istnieją?
 	cmp	rcx,	0x02
 	jbe	.no_option
 

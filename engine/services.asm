@@ -57,7 +57,9 @@ irq64:
 	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_CHECK
 	je	irq64_process_check
 
-
+	; zaalokować przestrzeń dla procesu?
+	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_MEMORY_ALLOCATE
+	je	irq64_process_memory
 
 	; pobrać listę procesów?
 	cmp	al,	VARIABLE_KERNEL_SERVICE_PROCESS_LIST
@@ -225,6 +227,33 @@ irq64_process_check:
 	; przywróć oryginalne rejestry
 	pop	rdi
 	pop	rdx
+	pop	rbx
+	pop	rax
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_process_memory:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rdi
+	push	r11
+
+	; przygotuj przestrzeń pamięci
+	mov	rax,	rdi
+	mov	rdi,	VARIABLE_MEMORY_HIGH_ADDRESS
+	sub	rax,	rdi
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
+	mov	r11,	cr3
+	call	cyjon_page_map_logical_area
+
+	; przywóć oryginalne rejestry
+	pop	r11
+	pop	rdi
+	pop	rcx
 	pop	rbx
 	pop	rax
 

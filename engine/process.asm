@@ -159,7 +159,7 @@ cyjon_process_init:
 
 	; przygotuj przestrzeń pod proces w 254 rekordzie tablicy PML4 jądra systemu (limit rozmiaru programu 512 GiB)
 	mov	rax,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - ( VARIABLE_MEMORY_PML4_RECORD_SIZE * 2 )
-	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
 	mov	r11,	cr3	; tablica PML4 aktualnego procesu
 	call	cyjon_page_map_logical_area
 
