@@ -23,8 +23,10 @@ variable_daemon_tcp_name			db	"network_tcp"
 variable_daemon_tcp_name_count			db	11
 
 variable_daemon_tcp_semaphore			db	VARIABLE_FALSE
+
 variable_daemon_tcp_cache			dq	VARIABLE_EMPTY
 variable_daemon_tcp_table_port			dq	VARIABLE_EMPTY
+variable_daemon_tcp_stack			dq	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -50,6 +52,15 @@ daemon_tcp:
 	; zapisz adres tablicy portów
 	call	cyjon_page_clear	; wszystkie porty dostępne
 	mov	qword [variable_daemon_tcp_table_port],	rdi
+
+	; przydziel miejsce pod stos tcp
+	call	cyjon_page_allocate
+	cmp	rdi,	VARIABLE_EMPTY
+	je	.stop	; brak miejsca
+
+	; zapisz adres stosu tcp
+	call	cyjon_page_clear
+	mov	qword [variable_daemon_tcp_stack],	rdi
 
 	; demon tcp gotowy
 	mov	byte [variable_daemon_tcp_semaphore],	VARIABLE_TRUE
@@ -87,6 +98,9 @@ daemon_tcp:
 	; przesuń wkskaźnik na ramkę
 	inc	rsi
 
+	; debug
+	xchg	bx,	bx
+
 	; sprawdź port docelowy pakietu
 	movzx	rax,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_TARGET]
 	xchg	al,	ah
@@ -108,10 +122,7 @@ daemon_tcp:
 	je	.mismatch	; port wolny
 
 	; port jest wykorzystywany przez jakiś proces
-	; nawiąż połączenie z klientem
-
-	; debug
-	xchg	bx,	bx	
+	; sprawdź czy połączenie jest już nawiązane	
 
 .mismatch:
 	; przesuń wkskaźnik na flagę ramki

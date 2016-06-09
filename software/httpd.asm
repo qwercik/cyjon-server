@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		httpd
-%define	VARIABLE_PROGRAM_VERSION	"v0.2"
+%define	VARIABLE_PROGRAM_VERSION	"v0.3"
 
 VARIABLE_HTTPD_PORT_DEFAULT		equ	80
 
@@ -33,8 +33,6 @@ start:
 	mov	rdi,	end
 	call	library_align_address_up_to_page
 
-	xchg	bx,	bx
-
 	; zaalokuj przestrzeń pamięci pod zapytnia od klientów
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_MEMORY_ALLOCATE
 	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_MEMORY_PAGE_SIZE
@@ -44,6 +42,11 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_ASSIGN
 	mov	rcx,	VARIABLE_HTTPD_PORT_DEFAULT
 	int	STATIC_KERNEL_SERVICE
+
+	; sprawdź czy port został przyznany
+	cmp	rcx,	VARIABLE_EMPTY
+	mov	rsi,	text_port_busy
+	je	.error
 
 	; wyświetl informacje o uruchomionym serwerze www
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
@@ -60,9 +63,21 @@ start:
 	mov	r8,	VARIABLE_HTTPD_PORT_DEFAULT
 	int	STATIC_KERNEL_SERVICE
 
-	xchg	bx,	bx
+	; zwolnij numer portu
+	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_RELEASE
+	mov	rcx,	VARIABLE_HTTPD_PORT_DEFAULT
+	int	STATIC_KERNEL_SERVICE
+
 	jmp	$
 
+.error:
+	mov	rax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
+	mov	bl,	VARIABLE_COLOR_DEFAULT
+	mov	rcx,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	int	STATIC_KERNEL_SERVICE
+
+.end:
 	; zakończ proces
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
