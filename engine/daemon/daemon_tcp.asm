@@ -11,6 +11,10 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
+variable_daemon_tcp_name			db	"network_tcp"
+variable_daemon_tcp_name_count			db	11
+
+; obsługa pierwszych 256 portów [0..255], VARIABLE_DAEMON_TCP_PORT_RECORD.size -> Bajtów na opis jednego rekordu/portu
 VARIABLE_DAEMON_TCP_PORT_TABLE_SIZE		equ	VARIABLE_MEMORY_PAGE_SIZE
 
 struc VARIABLE_DAEMON_TCP_PORT_RECORD
@@ -19,8 +23,19 @@ struc VARIABLE_DAEMON_TCP_PORT_RECORD
 	.size	resb	1
 endstruc
 
-variable_daemon_tcp_name			db	"network_tcp"
-variable_daemon_tcp_name_count			db	11
+struc VARIABLE_DAEMON_TCP_STACK_RECORD
+	.mac_source	resq	1
+	.mac_target	resq	1
+	.ip_source	resd	1
+	.ip_target	resd	1
+	.port_source	resw	1
+	.port_target	resw	1
+	.seq		resd	1
+	.ack		resd	1
+	.flag		resw	1
+	.mss		resd	1
+	.size		resb	1
+endstruc
 
 variable_daemon_tcp_semaphore			db	VARIABLE_FALSE
 
@@ -98,9 +113,6 @@ daemon_tcp:
 	; przesuń wkskaźnik na ramkę
 	inc	rsi
 
-	; debug
-	xchg	bx,	bx
-
 	; sprawdź port docelowy pakietu
 	movzx	rax,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_TARGET]
 	xchg	al,	ah
@@ -121,8 +133,24 @@ daemon_tcp:
 	cmp	qword [rdi + rax],	VARIABLE_EMPTY
 	je	.mismatch	; port wolny
 
+	; debug
+	xchg	bx,	bx
+
 	; port jest wykorzystywany przez jakiś proces
-	; sprawdź czy połączenie jest już nawiązane	
+	; sprawdź prośbę o nawiązanie połączenia
+	mov	al,	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS]
+	test	al,	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN
+	jnz	.create_connection
+
+	jmp	$
+
+.create_connection:
+	; sprawdź czy jest wolne miejsce na nawiązanie połączenia
+	; tak, aktualnie stos tcp obsługuje tylko jedno połaczenie!
+	cmp	dword [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.ip_source],	VARIABLE_EMPTY
+	ja	.mismatch	; stos tcp pełny, nie nawiązuj połączenia, odrzuć pakiet
+
+	jmp	$
 
 .mismatch:
 	; przesuń wkskaźnik na flagę ramki
