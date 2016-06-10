@@ -87,31 +87,9 @@ daemon_icmp:
 
 	; wyczyść sumę kontrolną, akumulator i ustaw kopię wskaźnika do ramki
 	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_DAEMON_ICMP_CHECKSUM],	VARIABLE_EMPTY
-	xor	rax,	rax
 	mov	rdi,	rsi
-
-.checksum:
-	; pobierz pierwsze słowo
-	movzx	rbx,	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE]
-	xchg	bl,	bh	; koryguj pozycje
-
-	; dodaj do akumulatora
-	add	rax,	rbx
-
-	; przesuń wskaźnik na następne słowo
-	add	rdi,	VARIABLE_WORD_SIZE
-
-	; wykonaj operacje z pozostałymi słowami ramki ICMP
-	loop	.checksum
-
-	; koryguj sumę kontrolną o przepełnienia rejestru AX
-	mov	bx,	ax
-	shr	eax,	VARIABLE_MOVE_HIGH_EAX_TO_AX
-	add	rbx,	rax
-
-	; odwróć wartość i ustaw na miejsca
-	not	bx
-	xchg	bl,	bh
+	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	call	cyjon_network_checksum_create
 
 	; zapisz sumę kontrolną ramki ICMP
 	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_DAEMON_ICMP_CHECKSUM],	bx
@@ -128,6 +106,15 @@ daemon_icmp:
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP]
 	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TARGET_IP]
 	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP],	eax
+
+	; oblicz sumę kontrolną w ramce IP
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CRC],	VARIABLE_EMPTY
+	mov	rdi,	rsi
+	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+	mov	rcx,	VARIABLE_NETWORK_FRAME_IP_SIZE / VARIABLE_WORD_SIZE
+	call	cyjon_network_checksum_create
+	; zapisz
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CRC],	bx
 
 	; przywróć rozmiar ramki ICMP
 	pop	rcx

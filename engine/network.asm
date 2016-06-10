@@ -101,6 +101,7 @@ VARIABLE_NETWORK_FRAME_TCP_FIELD_WINDOW_SIZE		equ	VARIABLE_NETWORK_FRAME_TCP_FIE
 VARIABLE_NETWORK_FRAME_TCP_FIELD_CHECKSUM		equ	VARIABLE_NETWORK_FRAME_TCP_FIELD_WINDOW_SIZE + VARIABLE_NETWORK_FRAME_TCP_SIZE_WINDOW_SIZE
 VARIABLE_NETWORK_FRAME_TCP_FIELD_URGENT_POINTER		equ	VARIABLE_NETWORK_FRAME_TCP_FIELD_CHECKSUM + VARIABLE_NETWORK_FRAME_TCP_SIZE_CHECKSUM
 VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS		equ	VARIABLE_NETWORK_FRAME_TCP_FIELD_URGENT_POINTER + VARIABLE_NETWORK_FRAME_TCP_SIZE_URGENT_POINTER
+VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS_MSS		equ	VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS
 
 VARIABLE_NETWORK_PORT_HTTP				equ	0x5000	; 80
 
@@ -444,4 +445,54 @@ network_frame_move:
 	mov	byte [rdi],	VARIABLE_TRUE
 
 	; koniec obsługi
+	ret
+
+;===============================================================================
+; wylicza sumę kontrolną fragmentu pamięci
+; IN:
+;	rcx - rozmiar fragmentu w Słowach [dw]
+;	rdi - wskaźnik do fragmentu pamięci
+;
+; OUT:
+;	bx - suma kontrolna
+;
+; pozostałe rejestry zachowane
+cyjon_network_checksum_create:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rcx
+	push	rdi
+
+	; inicjalizacja sumy kontrolnej
+	xor	rax,	rax
+
+.checksum:
+	; pobierz pierwsze słowo
+	movzx	rbx,	word [rdi]
+	xchg	bl,	bh	; koryguj pozycje
+
+	; dodaj do akumulatora
+	add	rax,	rbx
+
+	; przesuń wskaźnik na następne słowo
+	add	rdi,	VARIABLE_WORD_SIZE
+
+	; wykonaj operacje z pozostałymi słowami ramki ICMP
+	loop	.checksum
+
+	; koryguj sumę kontrolną o przepełnienia rejestru AX
+	mov	bx,	ax
+	shr	eax,	VARIABLE_MOVE_HIGH_EAX_TO_AX
+	add	rbx,	rax
+
+	; odwróć wartość i ustaw na miejsca
+	not	bx
+	xchg	bl,	bh
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rcx
+	pop	rax
+
+	; powrót z procedury
 	ret
