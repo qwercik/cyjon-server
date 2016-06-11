@@ -89,6 +89,7 @@ daemon_icmp:
 	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_DAEMON_ICMP_CHECKSUM],	VARIABLE_EMPTY
 	mov	rdi,	rsi
 	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	xor	rax,	rax	; inicjalizacja sumy
 	call	cyjon_network_checksum_create
 
 	; zapisz sumę kontrolną ramki ICMP
@@ -112,6 +113,7 @@ daemon_icmp:
 	mov	rdi,	rsi
 	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
 	mov	rcx,	VARIABLE_NETWORK_FRAME_IP_SIZE / VARIABLE_WORD_SIZE
+	xor	rax,	rax	; inicjalizacja sumy
 	call	cyjon_network_checksum_create
 	; zapisz
 	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CRC],	bx

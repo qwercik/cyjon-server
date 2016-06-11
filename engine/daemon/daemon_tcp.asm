@@ -16,31 +16,57 @@ variable_daemon_tcp_name_count			db	11
 
 ; obsługa pierwszych 256 portów [0..255], VARIABLE_DAEMON_TCP_PORT_RECORD.size -> Bajtów na opis jednego rekordu/portu
 VARIABLE_DAEMON_TCP_PORT_TABLE_SIZE		equ	VARIABLE_MEMORY_PAGE_SIZE
+; debug, 
+VARIABLE_DAEMON_TCP_MSS_SIZE		equ	VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_NETWORK_FRAME_ETHERNET_SIZE - VARIABLE_NETWORK_FRAME_IP_SIZE - VARIABLE_NETWORK_FRAME_TCP_SIZE - VARIABLE_QWORD_SIZE
 
+; struktura rekordu opisującego zajęty port tcp
 struc VARIABLE_DAEMON_TCP_PORT_RECORD
 	.cr3	resq	1
 	.rdi	resq	1
 	.size	resb	1
 endstruc
 
+; struktura stosu tcp
 struc VARIABLE_DAEMON_TCP_STACK_RECORD
-	.mac_source	resq	1
-	.ip_source	resd	1
-	.port_source	resw	1
-	.port_target	resw	1
-	.seq		resd	1
-	.ack		resd	1
+	.mac_source	resb	6
+	.ip_source	resb	4
+	.port_source	resb	2
+	.port_target	resb	2
+	.seq		resb	4
+	.ack		resb	4
 	.flag		resb	1
-	.mss		resd	1
+	.mss		resb	4
 	.size		resb	1
 endstruc
 
+; flaga, demon tcp został prawidłowo uruchomiony
 variable_daemon_tcp_semaphore			db	VARIABLE_FALSE
+
 
 variable_daemon_tcp_cache			dq	VARIABLE_EMPTY
 variable_daemon_tcp_table_port			dq	VARIABLE_EMPTY
 variable_daemon_tcp_stack			dq	VARIABLE_EMPTY
-variable_daemon_tcp_tmp		times 512	db	VARIABLE_EMPTY
+
+struc VARIABLE_DAEMON_TCP_PSEUDO_HEADER
+	.ip_source	resb	4
+	.ip_target	resb	4
+	.null		resb	1
+	.protocol	resb	1
+	.tcp_frame_size	resb	2
+	.size		resb	1
+endstruc
+
+; debug
+align	0x0100
+
+variable_daemon_tcp_pseudo_header		db	0, 0, 0, 0	; ip_source
+						db	0, 0, 0, 0	; ip_target
+						db	VARIABLE_EMPTY
+						db	0x06	; tcp
+						dw	0x0000	; tcp header + data
+
+; demon tcp, przygotowuj w tym miejscu pakiet do wysłania (połączenia i rozłączenia)
+variable_daemon_tcp_tmp		times VARIABLE_MEMORY_PAGE_SIZE	db	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -112,10 +138,6 @@ daemon_tcp:
 	; przesuń wkskaźnik na ramkę
 	inc	rsi
 
-	; debug
-	align	0x1000
-	xchg	bx,	bx
-
 	; sprawdź port docelowy pakietu
 	movzx	rax,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_TARGET]
 	xchg	al,	ah
@@ -151,7 +173,7 @@ daemon_tcp:
 
 .create_connection:
 	; sprawdź czy jest wolne miejsce na nawiązanie połączenia
-	; tak, aktualnie stos tcp obsługuje tylko jedno połaczenie!
+	; tak, aktualnie stos tcp obsługuje tylko jedno połaczenie! (choć rozmiar stosu pozwala na więcej)
 	; gdy tylko klient przyśle pierwsze zapytanie do działającego lokalnie serwera
 	; połączenie zostanie zakończone i miejsce zwolnione
 	; w przyszłości rozbuduję o mośliwość większej ilości połączeń na raz
@@ -159,13 +181,17 @@ daemon_tcp:
 	cmp	dword [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.ip_source],	VARIABLE_EMPTY
 	ja	.mismatch	; stos tcp pełny, nie nawiązuj połączenia, odrzuć pakiet
 
-	; zachowaj wskaźnik rekordu
+	; zachowaj wskaźnik do pakietu
+	push	rsi
+
+	; zachowaj wskaźnik do rekordu stosu
 	push	rdi
 
 	; zapisz adres MAC nadawcy
-	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]
-	and	rax,	qword [variable_network_mac_filter]
-	stosq
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]
+	stosd
+	mov	ax,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE]
+	stosw
 
 	; zapisz adres IP nadawcy
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP]
@@ -197,14 +223,12 @@ daemon_tcp:
 
 	; wyślij informacje o przyjęciu połączenia
 
-	; zachowaj wskaźnik do pakietu
-	push	rsi
-
 	; skopiuj oryginalny pakiet
 	mov	rdi,	variable_daemon_tcp_tmp
 	movzx	rcx,	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_HEADER_LENGTH]
 	shr	cl,	VARIABLE_DIVIDE_BY_4
 	add	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	push	rcx	; zapamiętaj rozmiar pakietu
 	rep	movsb
 
 	; przetwórz na pakiet zwrotny
@@ -227,6 +251,7 @@ daemon_tcp:
 	; oblicz sumę kontrolną w ramce IP
 	mov	word [rdi + VARIABLE_NETWORK_FRAME_IP_FIELD_CRC],	VARIABLE_EMPTY
 	mov	rcx,	VARIABLE_NETWORK_FRAME_IP_SIZE / VARIABLE_WORD_SIZE
+	xor	rax,	rax	; inicjalizacja sumy
 	call	cyjon_network_checksum_create
 	; zapisz
 	mov	word [rdi + VARIABLE_NETWORK_FRAME_IP_FIELD_CRC],	bx
@@ -238,18 +263,83 @@ daemon_tcp:
 	mov	word [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_SOURCE],	ax
 
 	; pobierz numer sekwencji klienta
-	mov	rsi,	qword [rsp + VARIABLE_QWORD_SIZE]
-	xor	eax,	eax
-	xchg	eax,	dword [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.seq]	; pobierz z stosu tcp i zresetuj
-	; aktualizuj numer potwierdzenia klienta i zapisz do pakietu zwrotnego
-	inc	eax
+	inc	byte [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_SEQUENCE + ( VARIABLE_BYTE_SIZE * 3 )]
+	mov	eax,	dword [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_SEQUENCE]
+	; wyślij do klienta odpowiedź w polu potwierdzenia
 	mov	dword [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_ACKNOWLEDGEMENT],	eax
-	; nasz numer sekwencji ZERO
+	; wyślij własny numer sekwencji, czyli ZERO (przy nawiązywaniu połączenia)
 	mov	dword [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_SEQUENCE],	VARIABLE_EMPTY
-	; zaaktualizuj rekord na stosie tcp
-	mov	dword [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.ack],	eax
 
-	jmp	$
+	; aktualizuj rekord na stosie tcp
+	mov	rsi,	qword [rsp + VARIABLE_QWORD_SIZE]
+	mov	dword [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.ack],	eax
+	mov	dword [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.seq],	VARIABLE_EMPTY
+
+	; ustaw flagę SYN + ACK
+	mov	byte [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS],	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
+	mov	byte [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.flags],	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
+
+	; poinformuj klienta, że nie przyjmujemy wiecej niż VARIABLE_DAEMON_TCP_MSS_SIZE danych w jednym pakiecie
+	mov	ax,	VARIABLE_DAEMON_TCP_MSS_SIZE
+	xchg	al,	ah
+	mov	word [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS_MSS + VARIABLE_WORD_SIZE],	ax
+
+	; przygotuj pseudo nagłówek
+	mov	rdi,	variable_daemon_tcp_pseudo_header
+
+	; ustaw adres ip źródłowy
+	mov	eax,	dword [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.ip_source]
+	mov	dword [rdi + VARIABLE_DAEMON_TCP_PSEUDO_HEADER.ip_source],	eax
+	; ustaw adres ip docelowy
+	mov	eax,	dword [variable_network_ip]
+	mov	dword [rdi + VARIABLE_DAEMON_TCP_PSEUDO_HEADER.ip_target],	eax
+
+	; debug
+	;xchg	bx,	bx
+
+	; rozmiar ramki tcp
+	mov	rax,	qword [rsp]
+	sub	rax,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	xchg	al,	ah
+	mov	word [rdi + VARIABLE_DAEMON_TCP_PSEUDO_HEADER.tcp_frame_size],	ax
+
+	; oblicz sumę kontrolną w ramce TCP
+
+	; suma kontrolna pseudo nagłówka
+	xor	rax,	rax	; inicjalizacja sumy
+	mov	rcx,	VARIABLE_DAEMON_TCP_PSEUDO_HEADER.size / VARIABLE_WORD_SIZE
+	call	cyjon_network_checksum_create
+
+	; suma kontrolna ramki TCP
+	mov	rdi,	variable_daemon_tcp_tmp
+	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	mov	word [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_CHECKSUM],	VARIABLE_EMPTY
+	mov	rcx,	qword [rsp]
+	sub	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	shr	rcx,	VARIABLE_DIVIDE_BY_2
+	mov	rax,	rbx	; połącz sumy kontrolne
+	; koryguj
+	xchg	al,	ah
+	not	ax
+	call	cyjon_network_checksum_create
+
+	; połączone sumy kontrolne
+	mov	rdi,	variable_daemon_tcp_tmp
+	mov	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_CHECKSUM],	bx
+
+	; wyślij odpowiedź do klienta o zgodzie na nawiązanie połączenia
+	pop	rcx
+	mov	rsi,	variable_daemon_tcp_tmp
+	call	cyjon_network_i8254x_transmit_packet
+
+	; usuń wskaźnik do rekordu stosu
+	add	rsp,	VARIABLE_QWORD_SIZE
+
+	; przywróć wskaźnik do pakietu
+	pop	rsi
+
+	; koniec obsługi pakietu
+	jmp	.mismatch
 
 .acknowledge_connection:
 	; zatwierdź udane połączenie z klientem
