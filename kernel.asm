@@ -116,6 +116,12 @@ kernel:
 	mov	rsi,	variable_daemon_garbage_collector_name
 	call	cyjon_process_init_daemon
 
+	; uruchom demona - protokół ethernet
+	movzx	rcx,	byte [variable_daemon_ethernet_name_count]
+	mov	rdx,	daemon_ethernet
+	mov	rsi,	variable_daemon_ethernet_name
+	call	cyjon_process_init_daemon
+
 	; uruchom demona - protokół arp
 	movzx	rcx,	byte [variable_daemon_arp_name_count]
 	mov	rdx,	daemon_arp
@@ -159,6 +165,7 @@ kernel:
 %include	"engine/variables.asm"
 
 %include	"engine/daemon/daemon_garbage_collector.asm"
+%include	"engine/daemon/daemon_ethernet.asm"
 %include	"engine/daemon/daemon_arp.asm"
 %include	"engine/daemon/daemon_icmp.asm"
 %include	"engine/daemon/daemon_tcp.asm"

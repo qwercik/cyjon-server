@@ -104,6 +104,12 @@ VARIABLE_NETWORK_FRAME_TCP_FIELD_URGENT_POINTER		equ	VARIABLE_NETWORK_FRAME_TCP_
 VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS		equ	VARIABLE_NETWORK_FRAME_TCP_FIELD_URGENT_POINTER + VARIABLE_NETWORK_FRAME_TCP_SIZE_URGENT_POINTER
 VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS_MSS		equ	VARIABLE_NETWORK_FRAME_TCP_FIELD_OPTIONS
 
+struc	VARIABLE_NETWORK_PACKET
+	.flag	resb	1
+	.data	resb	VARIABLE_MEMORY_PAGE_SIZE - 1
+	.SIZE	resb	1
+endstruc
+
 VARIABLE_NETWORK_PORT_HTTP				equ	0x5000	; 80
 
 variable_network_i8254x_base_address	dq	VARIABLE_EMPTY
@@ -240,7 +246,7 @@ network_init:
 
 ;===============================================================================
 ; obsługa przerwania sprzętowego kontrolera sieci
-; procedura odbiera ramki ethernet od karty sieciowej
+; procedura odbiera pakiety od karty sieciowej
 ; i zapisuje do bufora demona ethernet
 ; IN:
 ;	brak
@@ -307,22 +313,47 @@ network:
 	push	rsi
 	push	rdi
 
-	; dostęp do karty sieciowej jest możliwy?
-	cmp	byte [variable_network_enabled],	VARIABLE_FALSE
-	je	.rx_end	; nie, zignoruj pakiet
+	; sprawdź gotowość bufora stosu ethernet
+	cmp	byte [variable_daemon_ethernet_semaphore],	VARIABLE_FALSE
+	je	.receive_end	; nie jest gotowy, zignoruj pakiet
 
 	; adres przestrzeni cache karty sieciowej
 	mov	rsi,	qword [variable_network_i8254x_rx_cache]
+	; adres przestrzeni bufora stosu ethernet
+	mov	rdi,	qword [variable_daemon_ethernet_cache_in]
 
-	; ramka typu ARP
+	; debug
+	xchg	bx,	bx
+
+	; pobierz informacje z pola TYPE ramki Ethernet ------------------------
+	mov	cx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE]
+
+	; jeśli wartość mniejsza od 0x0800, jest to rozmiar ramki Ethernet
+	cmp	cx,	0x0800
+	jb	.receive_move
+
+	; ramka ARP ma stały rozmiar (nie posiada danych) ----------------------
+	mov	cx,	VARIABLE_NETWORK_FRAME_ARP_SIZE + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+
+	; sprawdź pakiet zawiera ramkę ARP
 	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE],	VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE_ARP
-	je	.arp
+	je	.receive_move
 
-	; ramka typu IP
+	; sprawdź pakiet pod kątem zawartości ramki IP
 	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE],	VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE_IP
-	je	.ip
+	jne	.receive_end	; przychodzący pakiet nie został rozpoznany, zignoruj
 
-.rx_end:
+	; pobierz rozmiar ramki IP
+	movzx	rcx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
+	add	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE	; dodaj rozmiar ramki Ethernet
+
+	; sprawdź czy rozmiar pakietu jest obsługiwany
+	cmp	cx,	VARIABLE_NETWORK_PACKET.SIZE - VARIABLE_BYTE_SIZE	; -1 Bajt, rozmiar flagi rekordu
+	jb	.receive_move
+
+	; przychodzący pakiet jest za duży, brak obsługi, zignoruj
+
+.receive_end:
 	; przywóć oryginalne rejestry
 	pop	rdi
 	pop	rsi
@@ -331,7 +362,7 @@ network:
 	pop	rbx
 	pop	rax
 
-	; poinformuj kontroler o przetworzonym pakiecie
+	; poinformuj kontroler o zakończeniu przetwarzania pakietu
 	mov	rsi,	qword [variable_network_i8254x_base_address]
 	mov	dword [rsi + VARIABLE_NIC_INTEL_82540EM_RDH],	VARIABLE_EMPTY
 	mov	dword [rsi + VARIABLE_NIC_INTEL_82540EM_RDT],	VARIABLE_TRUE
@@ -340,113 +371,39 @@ network:
 	mov	rcx,	qword [variable_network_i8254x_rx_cache]
 	mov	dword [variable_network_i8254x_rx_descriptor],	ecx
 
-	; pakiet obsłużony
+	; karta sieciowa gotowa do dalszej pracy
 	jmp	.end
 
-;-------------------------------------------------------------------------------
-.arp:
-	; bufor demona ARP gotowy?
-	cmp	qword [variable_daemon_arp_semaphore],	VARIABLE_FALSE
-	je	.rx_end	; nie, zignoruj pakiet
+.receive_move:
+	; rozmiar rekordu na stosie Ethernet
+	mov	rcx,	VARIABLE_DAEMON_ETHERNET_STACK_SIZE * VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_PACKET.SIZE
 
-	; załaduj pakiet do bufora
-	mov	rax,	VARIABLE_NETWORK_TABLE_64
-	mov	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_SIZE
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
-	mov	rdi,	qword [variable_daemon_arp_cache]
+.loop:
+	; szukaj wolnego miejsca w stosie Ethernet
+	cmp	word [rdi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE],	VARIABLE_EMPTY
+	jne	.receive_next
 
-	; załaduj pakiet do bufora
-	call	network_frame_move
-
-	; koniec
-	jmp	.rx_end
-
-;-------------------------------------------------------------------------------
-.ip:
-	; protokół ICMP?
-	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
-	je	.icmp
-
-	; protokół TCP?
-	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_TCP
-	je	.tcp
-
-	; brak obsługi
-	jmp	.rx_end
-
-;-------------------------------------------------------------------------------
-.icmp:
-	; bufor demona ICMP gotowy?
-	cmp	qword [variable_daemon_icmp_semaphore],	VARIABLE_FALSE
-	je	.rx_end	; tak, zignoruj pakiet
-
-	; załaduj pakiet do bufora
-	mov	rax,	VARIABLE_NETWORK_TABLE_128
-	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
-	xchg	bl,	bh
-	add	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_128
-	mov	rdi,	qword [variable_daemon_icmp_cache]
-
-	; załaduj pakiet do bufora
-	call	network_frame_move
-
-	; koniec
-	jmp	.rx_end
-
-;-------------------------------------------------------------------------------
-.tcp:
-	; sprawdź czy obsługiwany rozmiar ramki
-	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_WINDOW_SIZE],	VARIABLE_NETWORK_TABLE_MAX
-	jae	.rx_end	; nie, zignoruj pakiet
-
-	; załaduj pakiet do bufora demona TCP
-	mov	rax,	VARIABLE_NETWORK_TABLE_MAX
-	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
-	xchg	bl,	bh
-	add	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_MAX
-	mov	rdi,	qword [variable_daemon_tcp_cache]
-
-	; załaduj pakiet do bufora
-	call	network_frame_move
-
-	; koniec
-	jmp	.rx_end
-
-;===============================================================================
-network_frame_move:
-	; szukaj wolnego miejsca
-	cmp	byte [rdi],	VARIABLE_FALSE
-	je	.found_empty
-
-	; następny rekord
-	add	rdi,	rax
-	loop	network_frame_move
-
-.end:
-	; brak miejsca w buforze
-	ret
-
-.found_empty:
-	; zachowaj wskaźnik początku rekordu
+	; pomiń flagę rekordu stosu Ethernet
 	push	rdi
-
-	; pomiń flagę
 	inc	rdi
 
-	; kopiuj
-	mov	rcx,	rbx
+	; przenieś/kopiuj
 	rep	movsb
 
-	; przywróć wskaźnik
+	; ustaw flagę rekordu stosu Ethernet na gotowy
 	pop	rdi
-
-	; ustaw flagę rekordu na aktywną
 	mov	byte [rdi],	VARIABLE_TRUE
 
-	; koniec obsługi
-	ret
+	; koniec obsługi pakietu
+	jmp	.receive_end
+
+.receive_next:
+	; następny rekord
+	add	rdi,	VARIABLE_NETWORK_PACKET.SIZE
+	loop	.loop
+
+	; brak miejsca na stosie Ethernet, zignoruj pakiet
+	jmp	.receive_end
 
 ;===============================================================================
 ; wylicza sumę kontrolną fragmentu pamięci

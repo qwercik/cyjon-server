@@ -11,18 +11,26 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-VARIABLE_DAEMON_ARP_HTYPE		equ	0x0100	; 0x0001
-VARIABLE_DAEMON_ARP_PTYPE		equ	0x0008	; 0x0800
-VARIABLE_DAEMON_ARP_HLEN		equ	0x06	; MAC
-VARIABLE_DAEMON_ARP_PLEN		equ	0x04	; IP
-VARIABLE_DAEMON_ARP_OPERATION_REQUEST	equ	0x01
-VARIABLE_DAEMON_ARP_OPERATION_ANSWER	equ	0x02
-
 variable_daemon_arp_name		db	"network_arp"
 variable_daemon_arp_name_count		db	11
 
+; flaga, demon arp został prawidłowo uruchomiony
 variable_daemon_arp_semaphore		db	VARIABLE_FALSE
-variable_daemon_arp_cache		dq	VARIABLE_EMPTY
+
+; miejsce na przetwarzane pakiety
+VARIABLE_DAEMON_ARP_CACHE_SIZE		equ	8	; max 256
+variable_daemon_arp_cache_in		dq	VARIABLE_EMPTY
+
+; przestrzeń przetwarzania pakietów do wysłania
+VARIABLE_DAEMON_ARP_TRANSFORM_SIZE	equ	( VARIABLE_NETWORK_PACKET_SIZE_MAX / VARIABLE_MEMORY_PAGE_SIZE ) + 1	; +1 gdyby została reszta z dzielenia
+variable_daemon_arp_transform		dq	VARIABLE_EMPTY
+
+VARIABLE_DAEMON_ARP_TYPE_HARDWARE	equ	0x0100	; 0x0001 Ethernet
+VARIABLE_DAEMON_ARP_TYPE_PROTOCOL	equ	0x0008	; 0x0800 IP Address
+VARIABLE_DAEMON_ARP_LENGTH_HARDWARE	equ	0x06	; 00:00:00:00:00:00
+VARIABLE_DAEMON_ARP_LENGTH_PROTOCOL	equ	0x04	; 0.0.0.0
+VARIABLE_DAEMON_ARP_OPERATION_REQUEST	equ	0x01
+VARIABLE_DAEMON_ARP_OPERATION_ANSWER	equ	0x02
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -32,22 +40,25 @@ daemon_arp:
 	cmp	byte [variable_network_enabled],	VARIABLE_FALSE
 	je	.stop	; nie
 
-	; przydziel przestrzeń pod bufor
-	call	cyjon_page_allocate
+	; przydziel przestrzeń pod bufor przychodzący
+	call	cyjon_page_find_free_memory_physical
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.stop	; brak miejsca
 
-	; ustaw przestrzeń bufora i flagę dostępności
-	mov	qword [variable_daemon_arp_cache],	rdi
+	; zapisz adres
+	mov	qword [variable_daemon_arp_cache_in],	rdi
+
+	; demon arp gotowy
 	mov	byte [variable_daemon_arp_semaphore],	VARIABLE_TRUE
 
-.restart:
-	; ilość rekordów w tablicy
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_TABLE_64
-	; wskaźnik do adresu tablicy
-	mov	rsi,	qword [variable_daemon_arp_cache]
+.in:
+	; ilość możliwych pakietów przechowywanych w buforze wejściowym
+	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE * VARIABLE_DAEMON_ETHERNET_CACHE_SIZE / VARIABLE_NETWORK_PACKET_SIZE_MAX
 
-.search:
+	; wskaźnik do bufora wyjściowego
+	mov	rsi,	qword [variable_daemon_ethernet_cache_out]
+
+.in_search:
 	; szukaj ramki w cache
 	cmp	byte [rsi],	 VARIABLE_TRUE
 	je	.found

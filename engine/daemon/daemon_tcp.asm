@@ -118,7 +118,7 @@ daemon_tcp:
 
 .continue:
 	; następny rekord
-	add	rsi,	VARIABLE_NETWORK_TABLE_128
+	add	rsi,	VARIABLE_NETWORK_TABLE_MAX
 	loop	.search
 
 	; wstrzymaj demona
@@ -141,14 +141,13 @@ daemon_tcp:
 	; sprawdź port docelowy pakietu
 	movzx	rax,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_TARGET]
 	xchg	al,	ah
-
 	; port obsługiwany?
 	cmp	rax,	VARIABLE_DAEMON_TCP_PORT_TABLE_SIZE / VARIABLE_DAEMON_TCP_PORT_RECORD.size
 	ja	.mismatch
 
 	; czy z portu korzysta jakiś proces?
 
-	; oblicz przesunięcie rekordu w tablicy
+	; oblicz pozycje rekordu/portu w tablicy
 	xor	rdx,	rdx
 	mov	rcx,	VARIABLE_DAEMON_TCP_PORT_RECORD.size
 	mul	rcx
@@ -162,14 +161,19 @@ daemon_tcp:
 
 	; sprawdź prośbę o nawiązanie połączenia
 	mov	al,	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS]
-	test	al,	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN
-	jnz	.create_connection
+	cmp	al,	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN
+	je	.create_connection
 
 	; sprawdź, czy podziękowanie za nawiązanie połaczenia
-	test	al,	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
-	jnz	.acknowledge_connection
+	cmp	al,	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
+	je	.acknowledge_connection
 
-	jmp	$
+	; sprawdź, czy przsład dane do procesu z danego portu
+	cmp	al,	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_PSH | VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
+	je	.push_data
+
+	; nie obsługiwany pakiet, zignoruj
+	jmp	.mismatch
 
 .create_connection:
 	; sprawdź czy jest wolne miejsce na nawiązanie połączenia
@@ -277,7 +281,7 @@ daemon_tcp:
 
 	; ustaw flagę SYN + ACK
 	mov	byte [rdi + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS],	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
-	mov	byte [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.flags],	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
+	mov	byte [rsi + VARIABLE_DAEMON_TCP_STACK_RECORD.flag],	VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_SYN + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS_ACK
 
 	; poinformuj klienta, że nie przyjmujemy wiecej niż VARIABLE_DAEMON_TCP_MSS_SIZE danych w jednym pakiecie
 	mov	ax,	VARIABLE_DAEMON_TCP_MSS_SIZE
@@ -293,9 +297,6 @@ daemon_tcp:
 	; ustaw adres ip docelowy
 	mov	eax,	dword [variable_network_ip]
 	mov	dword [rdi + VARIABLE_DAEMON_TCP_PSEUDO_HEADER.ip_target],	eax
-
-	; debug
-	;xchg	bx,	bx
 
 	; rozmiar ramki tcp
 	mov	rax,	qword [rsp]
@@ -342,7 +343,52 @@ daemon_tcp:
 	jmp	.mismatch
 
 .acknowledge_connection:
-	; zatwierdź udane połączenie z klientem
+	; zachowaj wskaźnik do pakietu
+	push	rsi
+
+	; ustaw wskaźnik do stosu tcp
+	mov	rdi,	qword [variable_daemon_tcp_stack]
+
+	; sprawdź adres IP połączenia
+	add	rsi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE	; przesuń wskaźnik na ramkę IP
+	mov	eax,	dword [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.ip_source]
+	cmp	dword [rsi + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP],	eax
+	jne	.mismatch	; inne połączenie
+
+	; sprawdź numer portu połączenia
+	add	rsi,	VARIABLE_NETWORK_FRAME_IP_SIZE	; przesuń wskaźnik na ramkę TCP
+	mov	ax,	word [rsi + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_TARGET]
+	cmp	word [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.port_target],	ax
+	jne	.mismatch	; inny port
+
+	; aktualizuj rekord na stosie TCP
+
+	; zapisz numer portu nadawcy
+	mov	ax,	word [rsi + VARIABLE_NETWORK_FRAME_TCP_FIELD_PORT_SOURCE]
+	mov	word [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.port_source],	ax
+
+	; zapisz numer sekwencji
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_TCP_FIELD_SEQUENCE]
+	mov	dword [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.seq],	eax
+
+	; zapisz numer akceptacji
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_TCP_FIELD_ACKNOWLEDGEMENT]
+	mov	dword [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.ack],	eax
+
+	; zapisz flagi
+	mov	al,	byte [rsi + VARIABLE_NETWORK_FRAME_TCP_FIELD_FLAGS]
+	mov	byte [rdi + VARIABLE_DAEMON_TCP_STACK_RECORD.flag],	al	
+
+	; przywróć wskaźnik pakietu
+	pop	rsi
+
+	; zakończ obsługę pakietu
+	jmp	.mismatch
+
+.push_data:
+	; debug
+	xchg	bx,	bx
+
 	jmp	$
 
 .mismatch:

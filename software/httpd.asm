@@ -65,12 +65,14 @@ start:
 
 	jmp	$
 
+.port_release:
 	; zwolnij numer portu
 	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_RELEASE
 	mov	rcx,	VARIABLE_HTTPD_PORT_DEFAULT
 	int	STATIC_KERNEL_SERVICE
 
-	jmp	$
+	; koniec pracy serwera
+	jmp	.end
 
 .error:
 	mov	rax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
