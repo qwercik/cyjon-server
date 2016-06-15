@@ -11,8 +11,8 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
+VARIABLE_DAEMON_GARBAGE_COLLECTOR_NAME_COUNT	equ	17
 variable_daemon_garbage_collector_name		db	"garbage_collector"
-variable_daemon_garbage_collector_name_count	db	17
 
 ; 64 Bitowy kod programu
 [BITS 64]

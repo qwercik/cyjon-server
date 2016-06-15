@@ -110,35 +110,8 @@ kernel:
 	; zarejestruj dołączone oprogramowanie w wirtualnym systemie plików jądra systemu
 	call	move_included_files_to_virtual_filesystem
 
-	; uruchom demona - kolekcjonera śmieci
-	movzx	rcx,	byte [variable_daemon_garbage_collector_name_count]
-	mov	rdx,	daemon_garbage_collector
-	mov	rsi,	variable_daemon_garbage_collector_name
-	call	cyjon_process_init_daemon
-
-	; uruchom demona - protokół ethernet
-	movzx	rcx,	byte [variable_daemon_ethernet_name_count]
-	mov	rdx,	daemon_ethernet
-	mov	rsi,	variable_daemon_ethernet_name
-	call	cyjon_process_init_daemon
-
-	; uruchom demona - protokół arp
-	movzx	rcx,	byte [variable_daemon_arp_name_count]
-	mov	rdx,	daemon_arp
-	mov	rsi,	variable_daemon_arp_name
-	call	cyjon_process_init_daemon
-
-	; uruchom demona - protokół icmp
-	movzx	rcx,	byte [variable_daemon_icmp_name_count]
-	mov	rdx,	daemon_icmp
-	mov	rsi,	variable_daemon_icmp_name
-	call	cyjon_process_init_daemon
-
-	; uruchom demona - protokół tcp
-	movzx	rcx,	byte [variable_daemon_tcp_name_count]
-	mov	rdx,	daemon_tcp
-	mov	rsi,	variable_daemon_tcp_name
-	call	cyjon_process_init_daemon
+	; uruchom demony systemu :]
+	call	daemons
 
 	; uruchom pierwszy proces "init"
 	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
@@ -189,6 +162,7 @@ align	0x1000
 
 ; wszystkie dołączone programy zostaną zarejestrowane w wirtualnym systemie plików jądra systemu
 ; a poniższa przestrzeń zwolniona
+%include	"engine/daemons.asm"
 %include	"engine/software.asm"
 
 ; koniec kodu jądra systemu

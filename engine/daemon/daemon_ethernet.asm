@@ -11,8 +11,8 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
+VARIABLE_DAEMON_ETHERNET_NAME_COUNT	equ	16
 variable_daemon_ethernet_name		db	"network_ethernet"
-variable_daemon_ethernet_name_count	db	16
 
 ; flaga, demon ethernet został prawidłowo uruchomiony
 variable_daemon_ethernet_semaphore	db	VARIABLE_FALSE
