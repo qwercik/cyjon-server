@@ -19,33 +19,33 @@ daemons:
 	; zachowaj oryginalne rejestry
 	push	rcx
 	push	rdx
-	push	rsi
+	push	rdi
 
 	; ustaw wskaźnik do tablicy demonów
-	mov	rsi,	table_daemon
+	mov	rdi,	table_daemon
 
 .run:
 	; sprawdź czy koniec listy demonów do uruchomienia
-	cmp	qword [rsi],	VARIABLE_EMPTY
+	cmp	qword [rdi],	VARIABLE_EMPTY
 	je	.end
 
 	; ilość znaków w nazwie demona
-	mov	rcx,	qword [rsi]
+	mov	rcx,	qword [rdi]
 	; adres procedury demona
-	mov	rdx,	qword [rsi + VARIABLE_QWORD_SIZE]
+	mov	rdx,	qword [rdi + VARIABLE_QWORD_SIZE]
 	; wskaźnik do nazwy demona
-	add	rsi,	VARIABLE_QWORD_SIZE * 2
+	mov	rsi,	qword [rdi + VARIABLE_QWORD_SIZE * 2]
 
 	; uruchom
 	call	cyjon_process_init_daemon
 
 	; następny rekord w tablicy
-	add	rsi,	VARIABLE_QWORD_SIZE
+	add	rdi,	VARIABLE_QWORD_SIZE * 3
 	jmp	.run
 
 .end:
 	; przywróć oryginalne rejestry
-	pop	rsi
+	pop	rdi
 	pop	rdx
 	pop	rcx
 
@@ -60,6 +60,10 @@ table_daemon:
 	dq	VARIABLE_DAEMON_ETHERNET_NAME_COUNT
 	dq	daemon_ethernet
 	dq	variable_daemon_ethernet_name
+
+	dq	VARIABLE_DAEMON_TCP_IP_STACK_NAME_COUNT
+	dq	daemon_tcp_ip_stack
+	dq	variable_daemon_tcp_ip_stack_name
 
 	; koniec rekordów
 	dq	VARIABLE_EMPTY

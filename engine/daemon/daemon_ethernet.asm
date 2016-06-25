@@ -11,37 +11,23 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-VARIABLE_DAEMON_ETHERNET_NAME_COUNT	equ	16
-variable_daemon_ethernet_name		db	"network_ethernet"
+VARIABLE_DAEMON_ETHERNET_NAME_COUNT		equ	16
+variable_daemon_ethernet_name			db	"network ethernet"
 
 ; flaga, demon ethernet został prawidłowo uruchomiony
-variable_daemon_ethernet_semaphore	db	VARIABLE_FALSE
+variable_daemon_ethernet_semaphore		db	VARIABLE_FALSE
 
 ; miejsce na przetwarzane pakiety
-VARIABLE_DAEMON_ETHERNET_CACHE_SIZE	equ	8	; max 256
-variable_daemon_ethernet_cache_in	dq	VARIABLE_EMPTY
-variable_daemon_ethernet_cache_out	dq	VARIABLE_EMPTY
+VARIABLE_DAEMON_ETHERNET_CACHE_SIZE		equ	8	; max 256
+VARIABLE_DAEMON_ETHERNET_CACHE_FLAG_EMPTY	equ	0x00
+VARIABLE_DAEMON_ETHERNET_CACHE_FLAG_READY	equ	0x01
+variable_daemon_ethernet_cache			dq	VARIABLE_EMPTY
 
-struc	VARIABLE_DAEMON_ETHERNET_CACHE_OUT_RECORD
-	.id	resb	1
-	.size	resb	2
-	.data	resb	1
+struc	STRUCTURE_DAEMON_ETHERNET_CACHE
+	.flag	resb	1
+	.data	resb	VARIABLE_MEMORY_PAGE_SIZE - VARIABLE_BYTE_SIZE
+	.SIZE	resb	1
 endstruc
-
-; tablica przetworzonych pakietów
-VARIABLE_DAEMON_ETHERNET_STACK_SIZE	equ	1
-variable_daemon_ethernet_stack		dq	VARIABLE_EMPTY
-
-struc	VARIABLE_DAEMON_ETHERNET_STACK_RECORD
-	.mac_source	resb	6
-	.mac_target	resb	6
-	.type		resb	2
-	.SIZE		resb	1
-endstruc
-
-; przestrzeń przetwarzania pakietów do wysłania
-VARIABLE_DAEMON_ETHERNET_TRANSFORM_SIZE	equ	( VARIABLE_NETWORK_PACKET.SIZE / VARIABLE_MEMORY_PAGE_SIZE ) + 1	; +1 gdyby została reszta z dzielenia
-variable_daemon_ethernet_transform	dq	VARIABLE_EMPTY
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -49,141 +35,230 @@ variable_daemon_ethernet_transform	dq	VARIABLE_EMPTY
 daemon_ethernet:
 	; usługa sieciowa załączona?
 	cmp	byte [variable_network_enabled],	VARIABLE_FALSE
-	je	.stop	; nie
+	je	daemon_ethernet	; czekaj
 
-	; rozmiar buforów
+	; rozmiar buforu
 	mov	rcx,	VARIABLE_DAEMON_ETHERNET_CACHE_SIZE
 
+.wait:
 	; przydziel przestrzeń pod bufor pakietów przychodzących
 	call	cyjon_page_find_free_memory_physical
 	cmp	rdi,	VARIABLE_EMPTY
-	je	.stop	; brak miejsca
+	je	.wait	; brak miejsca, czekaj
 
 	; zapisz adres
 	call	cyjon_page_clear
-	mov	qword [variable_daemon_ethernet_cache_in],	rdi
-
-	; przydziel przestrzeń pod bufor pakietów wychodzących
-	call	cyjon_page_find_free_memory_physical
-	cmp	rdi,	VARIABLE_EMPTY
-	je	.stop	; brak miejsca
-
-	; zapisz adres
-	call	cyjon_page_clear
-	mov	qword [variable_daemon_ethernet_cache_out],	rdi
-
-	; przydziel przestrzeń pod stos ethernet
-	call	cyjon_page_allocate
-	cmp	rdi,	VARIABLE_EMPTY
-	je	.stop	; brak miejsca
-
-	; zapisz adres
-	call	cyjon_page_clear
-	mov	qword [variable_daemon_ethernet_stack],	rdi
-
-	; przydziel przestrzeń pod przetwarzane pakiety
-	call	cyjon_page_find_free_memory_physical
-	cmp	rdi,	VARIABLE_EMPTY
-	je	.stop	; brak miejsca
-
-	; zapisz adres
-	mov	qword [variable_daemon_ethernet_transform],	rdi
+	mov	qword [variable_daemon_ethernet_cache],	rdi
 
 	; demon ethernet gotowy
 	mov	byte [variable_daemon_ethernet_semaphore],	VARIABLE_TRUE
 
-.out:
 	; najpierw wyślij pakiety z bufora wyjściowego
 
-	; ilość możliwych pakietów przechowywanych w buforze wyjściowym
-	mov	rcx,	VARIABLE_DAEMON_ETHERNET_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / VARIABLE_NETWORK_PACKET.SIZE
+.restart:
+	; ilość możliwych pakietów przechowywanych w buforze
+	mov	rcx,	VARIABLE_DAEMON_ETHERNET_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_DAEMON_ETHERNET_CACHE.SIZE
 
-	; wskaźnik do bufora wyjściowego
-	mov	rsi,	qword [variable_daemon_ethernet_cache_out]
+	; wskaźnik do bufora
+	mov	rsi,	qword [variable_daemon_ethernet_cache]
 
-.out_search:
-	; szukaj aktywnego rekordu
-	cmp	byte [rsi + VARIABLE_DAEMON_ETHERNET_CACHE_OUT_RECORD.id],	VARIABLE_EMPTY
-	ja	.out_found
+.search:
+	; przeszukaj bufora za pakietem
+	cmp	byte [rsi + STRUCTURE_DAEMON_ETHERNET_CACHE.flag],	 VARIABLE_DAEMON_ETHERNET_CACHE_FLAG_READY
+	je	.found
 
-.out_continue:
+.continue:
 	; następny rekord
-	add	rsi,	VARIABLE_NETWORK_PACKET.SIZE
-	loop	.out_search
+	add	rsi,	STRUCTURE_DAEMON_ETHERNET_CACHE.SIZE
+	loop	.search
 
-.in:
-	; wstrzymaj demona
-	hlt
+	; brak pakietów przychodzących
 
-	; koniec
-	jmp	.out
+	; sprawdź bufor od początku
+	jmp	.restart
 
-;===============================================================================
-.out_found:
-	; zachowaj licznik i wskaźnik do pakietu
+.found:
+	; zachowaj licznik
 	push	rcx
+
+	; zachowaj wskaźnik do pakietu
 	push	rsi
 
-	; pobierz numer rekordu stosu do którego odwołuje się pakiet
-	movzx	rax,	byte [rsi + VARIABLE_DAEMON_ETHERNET_CACHE_OUT_RECORD.id]
+	; przesuń wskaźnik za flagę
+	add	rsi,	STRUCTURE_DAEMON_ETHERNET_CACHE.data
 
-	; przelicz na pozycję rekordu w stosie ethernet
-	mov	rcx,	VARIABLE_DAEMON_ETHERNET_STACK_RECORD.SIZE
-	xor	rdx,	rdx
-	mul	rcx
+	; ramka Ethernet zawiera dane pakietu ARP?
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE],	VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE_ARP
+	je	.arp
 
-	; przygotuj pakiet do wysłania -----------------------------------------
-
-	; wskaźnik do przestrzeni stosu i przestrzeni wysyłania pakietów
-	mov	rsi,	qword [variable_daemon_ethernet_stack]
-	mov	rdi,	qword [variable_daemon_ethernet_transform]
-
-	; ustaw nagłówek Ethernet
-	mov	rcx,	VARIABLE_DAEMON_ETHERNET_STACK_RECORD.SIZE
-	rep	movsb
-
-	; dołącz do nagłówka wysyłany pakiet -----------------------------------
-
-	; wskaźnik do rekordu pakietu do wysłania
-	mov	rsi,	qword [rsp]
-
-	; pobierz rozmiar pakietu do wysłania
-	movzx	rcx,	word [rsi + VARIABLE_DAEMON_ETHERNET_CACHE_OUT_RECORD.size]
-	push	rcx	; zapamiętaj
-
-	; przesuń wskaźnik na dane pakietu
-	add	rsi,	VARIABLE_DAEMON_ETHERNET_CACHE_OUT_RECORD.data
-
-	; kopiuj
-	rep	movsb
-
-	; wyślij pakiet --------------------------------------------------------
-
-	; ustaw wskaźnik początku pakietu do wysłania
-	mov	rsi,	qword [variable_daemon_ethernet_transform]
-
-	; przywróć rozmiar pakietu
-	pop	rcx
-
-	; koryguj o rozmiar nagłówka Ethernet
-	add	rsi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
-
-	; wyślij
-	call	cyjon_network_i8254x_transmit_packet
-
-	; przywróć wskaźnik do wysłanego pakietu w przestrzeni wychodzącej
-	pop	rsi
+	; ramka Ethernet zawiera dane pakietu IP?
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE],	VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TYPE_IP
+	je	.ip
 
 .mismatch:
-	; pakiet przetworzony/nieobsługiwany, wyłącz rekord
-	mov	byte [rsi],	VARIABLE_EMPTY
+	; przywróć wskaźnik do pakietu
+	pop	rsi
 
-	; przywróć licznik
+	; zwolnij rekord
+	mov	byte [rsi + STRUCTURE_DAEMON_ETHERNET_CACHE.flag],	VARIABLE_DAEMON_ETHERNET_CACHE_FLAG_EMPTY
+
+	; przywróć licznik rekordów
 	pop	rcx
 
-	; przetwórz pozostałe rekordy
-	jmp	.out_continue
+	; kontynuj przetwarzanie kolejnych pakietów
+	jmp	.continue
 
-.stop:
-	; cdn.
-	jmp	$
+;-------------------------------------------------------------------------------
+.arp:
+	; przesuń wskaźnik na dane ramki ARP
+	add	rsi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+
+	; Hardware Type
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_HTYPE],	VARIABLE_NETWORK_FRAME_ARP_FIELD_HTYPE_ETHERNET
+	jne	.mismatch
+
+	; Protocol Type
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_PTYPE],	VARIABLE_NETWORK_FRAME_ARP_FIELD_PTYPE_IPV4
+	jne	.mismatch
+
+	; Hardware Length / HAL
+	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_HAL],	VARIABLE_NETWORK_FRAME_ARP_FIELD_HAL_MAC
+	jne	.mismatch
+
+	; Protocol Length / PAL
+	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_PAL],	VARIABLE_NETWORK_FRAME_ARP_FIELD_PAL_IPV4
+	jne	.mismatch
+
+	; Request
+	cmp	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_OPCODE],	VARIABLE_NETWORK_FRAME_ARP_FIELD_OPCODE_REQUEST
+	jne	.mismatch
+
+	; czy zapytanie dotyczny naszego IP?
+	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_IP]
+	and	rax,	qword [variable_network_ip_filter]
+	cmp	rax,	qword [variable_network_ip]
+	jne	.mismatch	; nie, zignoruj
+
+	; modyfikuj ramkę ARP---------------------------------------------------
+
+	; zamień miejscami adresy IP nadawcy i odbiorcy+MAC
+	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC]
+	push	rax	; zapamiętaj nadawcę
+	mov	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC + VARIABLE_QWORD_SIZE]
+	xchg	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_MAC]
+	xchg	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_MAC + VARIABLE_QWORD_SIZE]
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC + VARIABLE_QWORD_SIZE],	bx
+
+	; zmień typ operacji na odpowiedź
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_OPCODE],	VARIABLE_NETWORK_FRAME_ARP_FIELD_OPCODE_REPLY
+
+	; w odpowiedzi podaj nasz adres MAC
+	mov	rdx,	qword [variable_network_mac_filter]
+	not	rdx
+	pop	rax
+	and	rax,	rdx
+	or	rax,	qword [variable_network_i8254x_mac_address]
+	mov	qword [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_SENDER_MAC],	rax
+
+	; modyfikuj ramkę Ethernet ---------------------------------------------
+
+	; przesuń wskaźnik na dane ramki Ethernet
+	sub	rsi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+
+	; nadawcą jesteśmy my
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET],	eax
+	shr	rax,	VARIABLE_MOVE_HIGH_RAX_TO_EAX
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE],	ax
+
+	; zamień miejscami nadawca z odbiorcą
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]
+	mov	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE]
+	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET]
+	xchg	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE]
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET],	eax
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE],	bx
+
+	; wyślij odpowiedź
+	mov	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_SIZE
+	call	cyjon_network_i8254x_transmit_packet
+
+	; koniec obsługi pakietu ARP
+	jmp	.mismatch
+
+;-------------------------------------------------------------------------------
+.ip:
+	; ramka IP zawiera dane pakietu ICMP?
+	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
+	je	.icmp
+
+	; pakiet nie pasuje do wzorców, zignoruj
+	jmp	.mismatch
+
+;-------------------------------------------------------------------------------
+.icmp:
+	; ustaw ramkę ICMP jako odpowiedź --------------------------------------
+	mov	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_ICMP_FIELD_TYPE],	VARIABLE_NETWORK_FRAME_ICMP_FIELD_TYPE_REPLY
+
+	; oblicz sumę kontrolną
+
+	; rozmiar ramki ICMP
+	movzx	rcx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
+	xchg	cl,	ch
+	; nagłówek ramki Ethernet i IP nie bierze udziału w obliczeniach
+	sub	rcx,	VARIABLE_NETWORK_FRAME_IP_SIZE
+	; zachowaj rozmiar ramki ICMP
+	push	rcx
+	; zamień na słowa
+	shr	rcx,	VARIABLE_DIVIDE_BY_2
+	; wyczyść sumę kontrolną
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_ICMP_FIELD_CHECKSUM],	VARIABLE_EMPTY
+	; brak wstępnej sumy kontrolnej
+	xor	rax,	rax
+	; ustaw wskaźnik na ramkę ICMP
+	mov	rdi,	rsi
+	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	call	cyjon_network_checksum_create
+
+	; zapisz sumę kontrolną ramki ICMP
+	xchg	bl,	bh
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_ICMP_FIELD_CHECKSUM],	bx
+
+	; zamień nadawcę i odbiorcę w ramce IP ---------------------------------
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP]
+	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TARGET_IP]
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP],	eax
+
+	; oblicz sumę kontrolną w ramce IP
+
+	; wyczyść starą sumę kontrolną
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CHECKSUM],	VARIABLE_EMPTY
+	; brak wstępnej sumy kontrolnej
+	xor	rax,	rax
+	; rozmiar ramki IP
+	mov	rcx,	VARIABLE_NETWORK_FRAME_IP_SIZE / VARIABLE_WORD_SIZE
+	; ustaw wskaźnik na ramkę IP
+	mov	rdi,	rsi
+	add	rdi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+	call	cyjon_network_checksum_create
+
+	; zapisz
+	xchg	bl,	bh
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CHECKSUM],	bx
+
+	; zamień nadawcę i odbiorcę w ramce Ethernet ---------------------------
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]
+	mov	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE]
+	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET]
+	xchg	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE]
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER],	eax
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE],	bx
+
+	; przywróć rozmiar ramki ICMP
+	pop	rcx
+
+	; koryguj rozmiar pakietu do wysłania
+	add	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE
+	call	cyjon_network_i8254x_transmit_packet
+
+	; koniec obsługi pakietu IP/ICMP
+	jmp	.mismatch

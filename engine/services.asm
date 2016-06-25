@@ -698,97 +698,97 @@ irq64_network_ip_get:
 
 ;-------------------------------------------------------------------------------
 irq64_network_port_assign:
-	; zachowaj oryginalne rejestry
-	push	rax
-	push	rcx
-	push	rdx
-	push	rdi
-
-	; oblicz przesunięcie rekordu w tablicy
-	mov	rax,	VARIABLE_DAEMON_TCP_PORT_RECORD.size
-	xor	rdx,	rdx
-	mul	rcx
-
-	; sprawdź rekord tablicy portów
-	mov	rdi,	qword [variable_daemon_tcp_table_port]
-	cmp	qword [rdi + rax],	VARIABLE_EMPTY
-	ja	.not_free	; port zajęty
-
-	; konfiguruj rekord
-	add	rdi,	rax
-
-	; CR3 procesu
-	mov	rax,	cr3
-	stosq
-
-	; wskaźnik przestrzeni pamięci, gdzie składować dane dla procesu
-	mov	rax,	qword [rsp]
-	stosq
-
-	; port zarezerwowany
-	jmp	.end
-
+;	; zachowaj oryginalne rejestry
+;	push	rax
+;	push	rcx
+;	push	rdx
+;	push	rdi
+;
+;	; oblicz przesunięcie rekordu w tablicy
+;	mov	rax,	VARIABLE_DAEMON_TCP_PORT_RECORD.size
+;	xor	rdx,	rdx
+;	mul	rcx
+;
+;	; sprawdź rekord tablicy portów
+;	mov	rdi,	qword [variable_daemon_tcp_table_port]
+;	cmp	qword [rdi + rax],	VARIABLE_EMPTY
+;	ja	.not_free	; port zajęty
+;
+;	; konfiguruj rekord
+;	add	rdi,	rax
+;
+;	; CR3 procesu
+;	mov	rax,	cr3
+;	stosq
+;
+;	; wskaźnik przestrzeni pamięci, gdzie składować dane dla procesu
+;	mov	rax,	qword [rsp]
+;	stosq
+;
+;	; port zarezerwowany
+;	jmp	.end
+;
 .not_free:
-	; zwróć kod błędu w rcx, port zajęty
-	mov	qword [rsp + VARIABLE_QWORD_SIZE * 2],	VARIABLE_EMPTY
-
+;	; zwróć kod błędu w rcx, port zajęty
+;	mov	qword [rsp + VARIABLE_QWORD_SIZE * 2],	VARIABLE_EMPTY
+;
 .end:
-	; przywróć oryginalne rejestry
-	pop	rdi
-	pop	rdx
-	pop	rcx
-	pop	rax
-
-	; koniec obsługi przerwania programowego
-	iretq
+;	; przywróć oryginalne rejestry
+;	pop	rdi
+;	pop	rdx
+;	pop	rcx
+;	pop	rax
+;
+;	; koniec obsługi przerwania programowego
+;	iretq
 
 ;-------------------------------------------------------------------------------
 irq64_network_port_release:
-	; zachowaj oryginalne rejestry
-	push	rax
-	push	rcx
-	push	rdx
-	push	rdi
-
-	; oblicz przesunięcie rekordu w tablicy
-	mov	rax,	VARIABLE_DAEMON_TCP_PORT_RECORD.size
-	xor	rdx,	rdx
-	mul	rcx
-
-	; sprawdź rekord tablicy portów
-	mov	rdi,	qword [variable_daemon_tcp_table_port]
-	cmp	qword [rdi + rax],	VARIABLE_EMPTY
-	je	.end	; port wolny?
-
-	; sprawdź czy proces jest właścicielem portu!
-	mov	rcx,	cr3
-	cmp	qword [rdi + rax],	rcx
-	jne	.prohibited_operation
-
-	; usuń rekord
-	add	rdi,	rax	; przesuń wskaźnik na poczatek rekordu
-	xor	rax,	rax
-	mov	rcx,	VARIABLE_DAEMON_TCP_PORT_RECORD.size / VARIABLE_QWORD_SIZE
-	rep	stosq
-
+;	; zachowaj oryginalne rejestry
+;	push	rax
+;	push	rcx
+;	push	rdx
+;	push	rdi
+;
+;	; oblicz przesunięcie rekordu w tablicy
+;	mov	rax,	VARIABLE_DAEMON_TCP_PORT_RECORD.size
+;	xor	rdx,	rdx
+;	mul	rcx
+;
+;	; sprawdź rekord tablicy portów
+;	mov	rdi,	qword [variable_daemon_tcp_table_port]
+;	cmp	qword [rdi + rax],	VARIABLE_EMPTY
+;	je	.end	; port wolny?
+;
+;	; sprawdź czy proces jest właścicielem portu!
+;	mov	rcx,	cr3
+;	cmp	qword [rdi + rax],	rcx
+;	jne	.prohibited_operation
+;
+;	; usuń rekord
+;	add	rdi,	rax	; przesuń wskaźnik na poczatek rekordu
+;	xor	rax,	rax
+;	mov	rcx,	VARIABLE_DAEMON_TCP_PORT_RECORD.size / VARIABLE_QWORD_SIZE
+;	rep	stosq
+;
 .end:
-	; przywróć oryginalne rejestry
-	pop	rdi
-	pop	rdx
-	pop	rcx
-	pop	rax
-
-	; koniec obsługi przerwania programowego
-	iretq	
+;	; przywróć oryginalne rejestry
+;	pop	rdi
+;	pop	rdx
+;	pop	rcx
+;	pop	rax
+;
+;	; koniec obsługi przerwania programowego
+;	iretq	
 
 .prohibited_operation:
-	; wyświetl ostrzeżenie
-	mov	bl,	VARIABLE_COLOR_RED
-	mov	cl,	VARIABLE_FULL
-	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	mov	rsi,	text_process_prohibited_operation
-	call	cyjon_screen_print_string
-
-	; zniszcz proces
-	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
-	jmp	irq64_process_end.prepared
+;	; wyświetl ostrzeżenie
+;	mov	bl,	VARIABLE_COLOR_RED
+;	mov	cl,	VARIABLE_FULL
+;	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+;	mov	rsi,	text_process_prohibited_operation
+;	call	cyjon_screen_print_string
+;
+;	; zniszcz proces
+;	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
+;	jmp	irq64_process_end.prepared

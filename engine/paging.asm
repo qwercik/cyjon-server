@@ -41,6 +41,10 @@ cyjon_page_find_free_memory_physical:
 	push	rsi
 	pushf
 
+	; czy my wiemy wogóle co robimy?
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.no_memory
+
 	; szukaj przestrzeni od początku binarnej mapy pamięci
 	mov	rsi,	qword [variable_binary_memory_map_address_start]
 
