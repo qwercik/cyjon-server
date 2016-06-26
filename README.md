@@ -1,6 +1,7 @@
 #Cyjon
 
 [![Join the chat at https://gitter.im/akasei/Cyjon](https://badges.gitter.im/akasei/Cyjon.svg)](https://gitter.im/akasei/Cyjon?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Prosty i wielozadaniowy System Operacyjny (zobaczymy co z tego wyjdzie, może System Usług), napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
 ![screenshot](screenshot.png)
