@@ -47,7 +47,7 @@ daemon_ethernet:
 	je	.wait	; brak miejsca, czekaj
 
 	; zapisz adres
-	call	cyjon_page_clear
+	call	cyjon_page_clear_few
 	mov	qword [variable_daemon_ethernet_cache],	rdi
 
 	; demon ethernet gotowy
@@ -63,7 +63,7 @@ daemon_ethernet:
 	mov	rsi,	qword [variable_daemon_ethernet_cache]
 
 .search:
-	; przeszukaj bufora za pakietem
+	; przeszukaj bufor za pakietem
 	cmp	byte [rsi + STRUCTURE_DAEMON_ETHERNET_CACHE.flag],	 VARIABLE_DAEMON_ETHERNET_CACHE_FLAG_READY
 	je	.found
 
@@ -191,7 +191,42 @@ daemon_ethernet:
 	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
 	je	.icmp
 
-	; pakiet nie pasuje do wzorców, zignoruj
+	; pobierz rozmiar ramki IP
+	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
+	xchg	bl,	bh
+	; koryguj o rozmiar ramki Ethernet
+	add	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
+
+	; rozmiar bufora TCP/IP w rekordach
+	mov	rcx,	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.SIZE
+
+	; adres przestrzeni bufora Ethernet
+	mov	rdi,	qword [variable_daemon_tcp_ip_stack_cache]
+
+.ip_loop:
+	; szukaj wolnego miejsca w buforze TCP/IP
+	cmp	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_EMPTY
+	jne	.ip_next
+
+	; przenieś/kopiuj
+	mov	rcx,	rbx	; załaduj do licznika rozmiar pakietu
+	push	rdi
+	inc	rdi
+	rep	movsb
+	pop	rdi
+
+	; oznacz rekord jako gotowy
+	mov	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_READY
+
+	; koniec obsługi pakietu
+	jmp	.mismatch
+
+.ip_next:
+	; następny rekord
+	add	rdi,	STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.SIZE
+	loop	.ip_loop
+
+	; pakiet nie pasuje do wzorców lub brak miejsca w buforze, zignoruj
 	jmp	.mismatch
 
 ;-------------------------------------------------------------------------------
@@ -224,14 +259,14 @@ daemon_ethernet:
 	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_ICMP_FIELD_CHECKSUM],	bx
 
 	; zamień nadawcę i odbiorcę w ramce IP ---------------------------------
-	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP]
-	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TARGET_IP]
-	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SENDER_IP],	eax
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SOURCE_ADDRESS]
+	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TARGET_ADDRESS]
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SOURCE_ADDRESS],	eax
 
 	; oblicz sumę kontrolną w ramce IP
 
 	; wyczyść starą sumę kontrolną
-	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CHECKSUM],	VARIABLE_EMPTY
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_HEADER_CHECKSUM],	VARIABLE_EMPTY
 	; brak wstępnej sumy kontrolnej
 	xor	rax,	rax
 	; rozmiar ramki IP
@@ -243,7 +278,7 @@ daemon_ethernet:
 
 	; zapisz
 	xchg	bl,	bh
-	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_CHECKSUM],	bx
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_HEADER_CHECKSUM],	bx
 
 	; zamień nadawcę i odbiorcę w ramce Ethernet ---------------------------
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]

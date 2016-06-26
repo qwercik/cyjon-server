@@ -91,14 +91,14 @@ start:
 	je	.hide
 
 	; demon, kolor ciemno szary
-	mov	ebx,	VARIABLE_COLOR_GRAY
+	mov	ebx,	VARIABLE_COLOR_GREEN
 
 	; kontynuuj
 	jmp	.color_ok
 
 .color_default:
 	; zwykły proces, kolor domyslny
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
+	mov	ebx,	VARIABLE_COLOR_LIGHT_GREEN
 
 .color_ok:
 	; wyświetl numer PID procesu
@@ -111,16 +111,16 @@ start:
 	ja	.process
 
 	; wyróżnij kolorem jądro systemu
-	mov	bl,	VARIABLE_COLOR_LIGHT_BLUE
-
-.process:
-	; rekord należy do mnie?
-	cmp	r8, qword [rsp + VARIABLE_QWORD_SIZE]
-	jne	.other
-
-	; wyróżnij mnie kolorem
 	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
 
+.process:
+;	; rekord należy do mnie?
+;	cmp	r8, qword [rsp + VARIABLE_QWORD_SIZE]
+;	jne	.other
+;
+;	; wyróżnij mnie kolorem
+;	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+;
 .other:
 	; wyświetl
 	int	STATIC_KERNEL_SERVICE

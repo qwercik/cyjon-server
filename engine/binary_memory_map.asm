@@ -171,7 +171,7 @@ binary_memory_map:
 
 	mov	rax,	qword [variable_binary_memory_map_free_pages]
 	shl	rax,	VARIABLE_MULTIPLE_BY_4	; KiB
-	mov	bl,	VARIABLE_COLOR_WHITE
+	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
 	mov	cx,	0x000A	; brak cyfr wiodących, system dziesiętny
 	call	cyjon_screen_print_number
 

@@ -35,6 +35,9 @@ start:
 	mov	ax,	0x0003
 	int	0x10
 
+	; załaduj naszą mapę czcionki
+	call	stage2_reload_font
+
 	; sprawdź typ procesora
 	call	stage2_check_cpu
 
@@ -69,6 +72,8 @@ start:
 %include	"bootloader/stage2/memory_map.asm"
 %include	"bootloader/stage2/print_16bit.asm"
 %include	"bootloader/stage2/gdt_structure.asm"
+%include	"bootloader/stage2/reload_font.asm"
+%include	"bootloader/font/gohuno.asm"
 
 ; rozpocznij kod 32 Bitowy od pełnego adresu
 align	0x04

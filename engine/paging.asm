@@ -476,6 +476,37 @@ cyjon_page_clear:
 	ret
 
 ;=======================================================================
+; czyści N zaalokowanych stron wypełniając je wartościami 0x0000000000000000
+; IN:
+;	rcx - ilość ciągłych stron do wyczyszczenia
+;	rdi - adres strony do wyczyszczenia
+; OUT:
+;	brak
+;
+; wszystkie rejestry zachowane
+cyjon_page_clear_few:
+	; zachowaj oryginalne rejestry
+	push	rcx
+	push	rdi
+
+.loop:
+	; wyczyść stronę
+	call	cyjon_page_clear
+
+	; przesuń wskaźnik na następną stronę
+	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
+
+	; kontynuuj z pozostałymi stronami
+	loop	.loop
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rcx
+
+	; powrót z procedury
+	ret
+
+;=======================================================================
 ; procedura przekazuje wykorzystywaną stronę do puli wolnych
 ; IN:
 ;	rdi	- adres strony do zwolnienia
