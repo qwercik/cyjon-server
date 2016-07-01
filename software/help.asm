@@ -51,7 +51,7 @@ start:
 	mov	rsi,	qword [rsi + r8]
 
 	; wyświetl opis polecenia
-	mov	ebx,	VARIABLE_COLOR_GRAY
+	mov	ebx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	VARIABLE_FULL
 	int	STATIC_KERNEL_SERVICE
 

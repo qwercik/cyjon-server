@@ -53,7 +53,7 @@ start:
 	mov	cl,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
 	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 
-	mov	bl,	VARIABLE_COLOR_LIGHT_BLUE
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	rsi,	text_welcome
 	int	STATIC_KERNEL_SERVICE
 
@@ -61,7 +61,7 @@ start:
 	mov	rsi,	text_separator
 	int	STATIC_KERNEL_SERVICE
 
-	mov	bl,	VARIABLE_COLOR_LIGHT_GRAY
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	rsi,	text_version
 	int	STATIC_KERNEL_SERVICE
 
@@ -99,7 +99,7 @@ start:
 .no_process:
 	; wyświetl informacje o braku pamięci
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	bl,	VARIABLE_COLOR_YELLOW
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	cl,	VARIABLE_FULL
 	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_no_process

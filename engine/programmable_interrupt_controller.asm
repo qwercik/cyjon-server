@@ -71,7 +71,7 @@ programmable_interrupt_controller:
 ;===============================================================================
 ; procedura włącza przerwanie na kontrolerze PIC
 ; IN:
-;	brak
+;	cx - numer przerwania IRQ
 ; OUT:
 ;	brak
 ;
@@ -82,6 +82,41 @@ cyjon_programmable_interrupt_controller_enable_irq:
 
 	;ustaw maskę kontrolera
 	btr	word [variable_pic_mask],	cx
+
+	; jeśli numer przerwania sprzętowego > 7
+	cmp	cx,	8
+	jb	.ok
+
+	; włącz obsługę przerwań kaskadowych (obsługa kontrolera PIC1 i innych)
+	btr	word [variable_pic_mask],	2
+
+.ok:
+	; przełąduj ustawienia kontrolera
+	mov	al,	byte [variable_pic_mask + VARIABLE_BYTE_SIZE]
+	out	VARIABLE_PIC_DATA_PORT1,	al	; pic1 (slave)
+	mov	al,	byte [variable_pic_mask]
+	out	VARIABLE_PIC_DATA_PORT0,	al	; pic0 (master)
+
+	; przywróć oryginalne rejestry
+	pop	rax
+
+	; powrót z procedury
+	ret
+
+;===============================================================================
+; procedura wyłącza przerwanie na kontrolerze PIC
+; IN:
+;	brak
+; OUT:
+;	brak
+;
+; wszystkie rejestry zachowane
+cyjon_programmable_interrupt_controller_disable_irq:
+	; zachowaj oryginalne rejestry
+	push	rax
+
+	;ustaw maskę kontrolera
+	bts	word [variable_pic_mask],	cx
 
 	; jeśli numer przerwania sprzętowego > 7
 	cmp	cx,	8

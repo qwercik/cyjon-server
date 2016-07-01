@@ -68,7 +68,7 @@ virtual_file_system:
 	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table_size],	1
 
 	; wyświetl informację o utworzeniu wirtualnego systemu plików
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	cl,	VARIABLE_FULL
 	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_caution

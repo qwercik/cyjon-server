@@ -46,7 +46,7 @@ start:
 
 	; wyświetl znak zachęty
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
-	mov	rbx,	VARIABLE_COLOR_LIGHT_RED
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_prompt
@@ -66,7 +66,7 @@ start:
 .restart:
 	; wyświetl znak zachęty od nowej linii
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
-	mov	rbx,	VARIABLE_COLOR_LIGHT_RED
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_prompt_with_newline

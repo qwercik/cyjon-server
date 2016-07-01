@@ -41,6 +41,10 @@ cyjon_page_find_free_memory_physical:
 	push	rsi
 	pushf
 
+	; czy my wiemy wogóle co robimy?
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.no_memory
+
 	; szukaj przestrzeni od początku binarnej mapy pamięci
 	mov	rsi,	qword [variable_binary_memory_map_address_start]
 
@@ -467,6 +471,37 @@ cyjon_page_clear:
 	pop	rdi
 	pop	rcx
 	pop	rax
+
+	; powrót z procedury
+	ret
+
+;=======================================================================
+; czyści N zaalokowanych stron wypełniając je wartościami 0x0000000000000000
+; IN:
+;	rcx - ilość ciągłych stron do wyczyszczenia
+;	rdi - adres strony do wyczyszczenia
+; OUT:
+;	brak
+;
+; wszystkie rejestry zachowane
+cyjon_page_clear_few:
+	; zachowaj oryginalne rejestry
+	push	rcx
+	push	rdi
+
+.loop:
+	; wyczyść stronę
+	call	cyjon_page_clear
+
+	; przesuń wskaźnik na następną stronę
+	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
+
+	; kontynuuj z pozostałymi stronami
+	loop	.loop
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rcx
 
 	; powrót z procedury
 	ret

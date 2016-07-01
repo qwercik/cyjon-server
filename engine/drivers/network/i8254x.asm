@@ -298,7 +298,7 @@ cyjon_network_i8254x_init:
 	call	cyjon_network_i8254x_reset
 
 	; wyświetl podstawową informację o karcie sieciowej
-	mov	rbx,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	-1
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_caution
@@ -316,7 +316,7 @@ cyjon_network_i8254x_init:
 
 .loop:
 	; wyświetl pierwszy numer adresu MAC
-	mov	rbx,	VARIABLE_COLOR_WHITE
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	cx,	0x0210	; podstawa 16
 	movzx	rax,	byte [variable_network_i8254x_mac_address + r9]
 	call	cyjon_screen_print_number
@@ -340,7 +340,7 @@ cyjon_network_i8254x_init:
 	call	cyjon_screen_print_string
 
 	; wyświetl numer przerwania
-	mov	rbx,	VARIABLE_COLOR_WHITE
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	cx,	0x000A	; podstawa 16
 	movzx	rax,	byte [variable_network_i8254x_irq]
 	call	cyjon_screen_print_number

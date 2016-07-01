@@ -91,7 +91,7 @@ start:
 	je	.hide
 
 	; demon, kolor ciemno szary
-	mov	ebx,	VARIABLE_COLOR_GRAY
+	mov	ebx,	VARIABLE_COLOR_DEFAULT
 
 	; kontynuuj
 	jmp	.color_ok
@@ -111,16 +111,16 @@ start:
 	ja	.process
 
 	; wyróżnij kolorem jądro systemu
-	mov	bl,	VARIABLE_COLOR_LIGHT_BLUE
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 
 .process:
-	; rekord należy do mnie?
-	cmp	r8, qword [rsp + VARIABLE_QWORD_SIZE]
-	jne	.other
-
-	; wyróżnij mnie kolorem
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
-
+;	; rekord należy do mnie?
+;	cmp	r8, qword [rsp + VARIABLE_QWORD_SIZE]
+;	jne	.other
+;
+;	; wyróżnij mnie kolorem
+;	mov	bl,	VARIABLE_COLOR_DEFAULT
+;
 .other:
 	; wyświetl
 	int	STATIC_KERNEL_SERVICE
