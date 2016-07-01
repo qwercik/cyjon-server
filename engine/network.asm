@@ -125,7 +125,7 @@ variable_network_enabled				db	VARIABLE_TRUE
 variable_network_mac_filter				dq	0x0000FFFFFFFFFFFF
 variable_network_ip_filter				dq	0x00000000FFFFFFFF
 
-variable_network_ip					db	10, 0, 0, 1, VARIABLE_EMPTY, VARIABLE_EMPTY, VARIABLE_EMPTY, VARIABLE_EMPTY
+variable_network_ip					db	0, 0, 0, 0, VARIABLE_EMPTY, VARIABLE_EMPTY, VARIABLE_EMPTY, VARIABLE_EMPTY
 
 ; dla 512 portów
 variable_network_port_table				dq	VARIABLE_EMPTY
@@ -311,16 +311,17 @@ network:
 	; adres przestrzeni cache karty sieciowej
 	mov	rsi,	qword [variable_network_i8254x_rx_cache]
 
-	; sprawdź czy pakiet jest przeznaczony dla nas
+	; pakiet dotyczy naszego adresu MAC
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_WORD_SIZE]
 	shl	rax,	VARIABLE_MOVE_RAX_WORD_LEFT
 	or	ax,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET]
 	cmp	rax,	qword [variable_network_i8254x_mac_address]
 	je	.our_packet
 
-	; pakiet wysłany na adres rozgłoszeniowy?
-	cmp	rax,	qword [variable_network_mac_filter]
-	jne	.receive_end	; pakiet z adresu rozgłoszeniowego
+	; pakiet dotyczy adresu rozgłoszeniowego?
+	mov	eax,	dword [variable_network_ip_filter]
+	cmp	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET]
+	jne	.receive_end
 
 .our_packet:
 	; sprawdź gotowość bufora stosu ethernet
@@ -430,12 +431,12 @@ network:
 ;	rdi - wskaźnik do fragmentu pamięci
 ;
 ; OUT:
-;	bx - suma kontrolna
+;	ax - suma kontrolna
 ;
 ; pozostałe rejestry zachowane
 cyjon_network_checksum_create:
 	; zachowaj oryginalne rejestry
-	push	rax
+	push	rbx
 	push	rcx
 	push	rdi
 
@@ -461,10 +462,13 @@ cyjon_network_checksum_create:
 	; odwróć wartość
 	not	bx
 
+	; wynik zwróć w ax
+	mov	ax,	bx
+
 	; przywróć oryginalne rejestry
 	pop	rdi
 	pop	rcx
-	pop	rax
+	pop	rbx
 
 	; powrót z procedury
 	ret

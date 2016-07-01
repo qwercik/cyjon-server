@@ -36,7 +36,7 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 	; pobierz od użytkownika ciąg znaków
-	mov	rbx,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	16	; ilość pobieranych znaków
 	mov	rdi,	text_login_cache	; gdzie przechować pobrane znaki
 	call	library_input

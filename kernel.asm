@@ -65,7 +65,7 @@ kernel:
 	push	rsi	; OMEGA
 
 	; wyświetl informacje powitalną
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN + VARIABLE_COLOR_BACKGROUND_BLACK
+	mov	bl,	VARIABLE_COLOR_DEFAULT + VARIABLE_COLOR_BACKGROUND_BLACK
 	mov	cl,	VARIABLE_FULL
 	mov	rsi,	text_kernel_welcome
 	call	cyjon_screen_print_string

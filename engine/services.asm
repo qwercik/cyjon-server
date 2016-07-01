@@ -133,6 +133,10 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_PORT_RELEASE
 	je	irq64_network_port_release
 
+	; wyślij dane na podstawie identyfikatora połączenia?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_SEND
+	je	irq64_network_send
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -253,6 +257,11 @@ irq64_process_memory:
 	; przywóć oryginalne rejestry
 	pop	r11
 	pop	rdi
+
+	; wyczyść przestrzeń
+	call	cyjon_page_clear_few
+
+	; przywróć oryginalne rejestry
 	pop	rcx
 	pop	rbx
 	pop	rax
@@ -720,6 +729,10 @@ irq64_network_port_assign:
 	mov	rax,	cr3
 	stosq
 
+	; rozmiar przestrzeni
+	mov	rax,	qword [rsp + VARIABLE_QWORD_SIZE]
+	stosq
+
 	; wskaźnik przestrzeni pamięci, gdzie składować dane dla procesu
 	mov	rax,	qword [rsp]
 	stosq
@@ -787,3 +800,63 @@ irq64_network_port_release:
 	; zniszcz proces
 	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
 	jmp	irq64_process_end.prepared
+
+;-------------------------------------------------------------------------------
+irq64_network_send:
+	; zachowaj oryginalne rejestry
+	push	rbx
+	push	rsi
+	push	rdi
+	push	rcx
+
+.restart:
+	; rozmiar bufora wyjściowego sotsu TCP/IP w rekordach
+	mov	rcx,	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_SIZE
+
+	; ustaw wskaźnik do bufora wyjściowego stosu TCP/IP
+	mov	rdi,	qword [variable_daemon_tcp_ip_stack_cache_out]
+
+.search:
+	; szukaj wolnego rekordu
+	cmp	qword [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_EMPTY
+	je	.found
+
+	; następny rekord w buforze stosu TCP/IP
+	add	rdi,	STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.SIZE
+
+	; szukaj dalej
+	loop	.search
+
+	; nie znaleziono wolnego rekordu, zacznij od początku
+	jmp	.restart
+
+.found:
+	; zachowaj wskaźnik do rekordu
+	push	rdi
+
+	; zablokuj rekord
+	mov	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.flag],	VARIABLE_TRUE
+
+	; załaduj do rekordu rozmiar danycho do wysłania
+	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE]
+	mov	qword [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.size],	rcx
+
+	; skopiuj dane
+	add	rdi,	STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.data
+	rep	movsb
+
+	; przywróć wskaźnik do rekordu
+	pop	rdi
+
+	; aktywuj rekord, ustawiając numer identyfikatora połączenia na stosie TCP/IP
+	mov	qword [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.id],	rbx
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rcx
+	pop	rdi
+	pop	rsi
+	pop	rbx
+
+	; koniec obsługi przerwania programowego
+	iretq

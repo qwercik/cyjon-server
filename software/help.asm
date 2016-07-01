@@ -40,7 +40,7 @@ start:
 	cmp	qword [rsi],	VARIABLE_EMPTY
 	je	.end
 
-	mov	ebx,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	ebx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	r8
 	int	STATIC_KERNEL_SERVICE
 

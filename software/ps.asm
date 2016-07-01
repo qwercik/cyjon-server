@@ -91,14 +91,14 @@ start:
 	je	.hide
 
 	; demon, kolor ciemno szary
-	mov	ebx,	VARIABLE_COLOR_GREEN
+	mov	ebx,	VARIABLE_COLOR_DEFAULT
 
 	; kontynuuj
 	jmp	.color_ok
 
 .color_default:
 	; zwykły proces, kolor domyslny
-	mov	ebx,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	ebx,	VARIABLE_COLOR_DEFAULT
 
 .color_ok:
 	; wyświetl numer PID procesu
@@ -111,7 +111,7 @@ start:
 	ja	.process
 
 	; wyróżnij kolorem jądro systemu
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 
 .process:
 ;	; rekord należy do mnie?
@@ -119,7 +119,7 @@ start:
 ;	jne	.other
 ;
 ;	; wyróżnij mnie kolorem
-;	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+;	mov	bl,	VARIABLE_COLOR_DEFAULT
 ;
 .other:
 	; wyświetl

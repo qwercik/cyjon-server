@@ -53,7 +53,7 @@ start:
 	mov	cl,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
 	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	rsi,	text_welcome
 	int	STATIC_KERNEL_SERVICE
 

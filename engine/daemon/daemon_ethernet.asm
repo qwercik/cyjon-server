@@ -134,9 +134,8 @@ daemon_ethernet:
 	jne	.mismatch
 
 	; czy zapytanie dotyczny naszego IP?
-	mov	rax,	qword [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_IP]
-	and	rax,	qword [variable_network_ip_filter]
-	cmp	rax,	qword [variable_network_ip]
+	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ARP_FIELD_TARGET_IP]
+	cmp	eax,	dword [variable_network_ip]
 	jne	.mismatch	; nie, zignoruj
 
 	; modyfikuj ramkę ARP---------------------------------------------------
@@ -165,18 +164,16 @@ daemon_ethernet:
 	; przesuń wskaźnik na dane ramki Ethernet
 	sub	rsi,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
 
-	; nadawcą jesteśmy my
-	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET],	eax
-	shr	rax,	VARIABLE_MOVE_HIGH_RAX_TO_EAX
-	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE],	ax
-
 	; zamień miejscami nadawca z odbiorcą
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]
 	mov	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE]
-	xchg	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET]
-	xchg	bx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE]
 	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET],	eax
 	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_TARGET + VARIABLE_DWORD_SIZE],	bx
+	; ustaw nadawcę
+	mov	rax,	qword [variable_network_i8254x_mac_address]
+	mov	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER],	eax
+	shr	rax,	VARIABLE_MOVE_HIGH_RAX_TO_EAX
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER + VARIABLE_DWORD_SIZE],	ax
 
 	; wyślij odpowiedź
 	mov	rcx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_ARP_SIZE
@@ -191,6 +188,11 @@ daemon_ethernet:
 	cmp	byte [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL],	VARIABLE_NETWORK_FRAME_IP_FIELD_PROTOCOL_ICMP
 	je	.icmp
 
+	; czy ramka IP jest skierowana do nas?
+	mov	eax,	dword [variable_network_ip]
+	cmp	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TARGET_ADDRESS]
+	jne	.mismatch
+
 	; pobierz rozmiar ramki IP
 	movzx	rbx,	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
 	xchg	bl,	bh
@@ -198,14 +200,14 @@ daemon_ethernet:
 	add	rbx,	VARIABLE_NETWORK_FRAME_ETHERNET_SIZE
 
 	; rozmiar bufora TCP/IP w rekordach
-	mov	rcx,	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.SIZE
+	mov	rcx,	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_IN.SIZE
 
 	; adres przestrzeni bufora Ethernet
-	mov	rdi,	qword [variable_daemon_tcp_ip_stack_cache]
+	mov	rdi,	qword [variable_daemon_tcp_ip_stack_cache_in]
 
 .ip_loop:
 	; szukaj wolnego miejsca w buforze TCP/IP
-	cmp	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_EMPTY
+	cmp	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_IN.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_EMPTY
 	jne	.ip_next
 
 	; przenieś/kopiuj
@@ -216,14 +218,14 @@ daemon_ethernet:
 	pop	rdi
 
 	; oznacz rekord jako gotowy
-	mov	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_READY
+	mov	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_IN.flag],	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_FLAG_READY
 
 	; koniec obsługi pakietu
 	jmp	.mismatch
 
 .ip_next:
 	; następny rekord
-	add	rdi,	STRUCTURE_DAEMON_TCP_IP_STACK_CACHE.SIZE
+	add	rdi,	STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_IN.SIZE
 	loop	.ip_loop
 
 	; pakiet nie pasuje do wzorców lub brak miejsca w buforze, zignoruj
@@ -255,8 +257,8 @@ daemon_ethernet:
 	call	cyjon_network_checksum_create
 
 	; zapisz sumę kontrolną ramki ICMP
-	xchg	bl,	bh
-	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_ICMP_FIELD_CHECKSUM],	bx
+	xchg	al,	ah
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_SIZE + VARIABLE_NETWORK_FRAME_ICMP_FIELD_CHECKSUM],	ax
 
 	; zamień nadawcę i odbiorcę w ramce IP ---------------------------------
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_SOURCE_ADDRESS]
@@ -277,8 +279,8 @@ daemon_ethernet:
 	call	cyjon_network_checksum_create
 
 	; zapisz
-	xchg	bl,	bh
-	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_HEADER_CHECKSUM],	bx
+	xchg	al,	ah
+	mov	word [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_SIZE + VARIABLE_NETWORK_FRAME_IP_FIELD_HEADER_CHECKSUM],	ax
 
 	; zamień nadawcę i odbiorcę w ramce Ethernet ---------------------------
 	mov	eax,	dword [rsi + VARIABLE_NETWORK_FRAME_ETHERNET_FIELD_SENDER]
