@@ -18,7 +18,7 @@ all:
 	$(ASM) kernel.asm			-o build/kernel.bin
 
 	$(ASM) $(BOOTLOADER)/stage2.asm	-o build/stage2.bin
-	$(ASM) $(BOOTLOADER)/stage1.asm	-o $(BUILD)/disk\ with\ omega.raw
+	$(ASM) $(BOOTLOADER)/stage1.asm	-o $(BUILD)/disk_with_omega.raw
 
 	make clean
 
