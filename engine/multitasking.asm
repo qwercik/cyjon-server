@@ -48,12 +48,15 @@ multitasking:
 	jmp	cyjon_screen_kernel_panic
 
 .page0_ok:
+	; zwiększono rozmiar buforów
+	inc	qword [variable_binary_memory_map_cached]
+
 	call	cyjon_page_clear
 
 	; zapamiętaj adres serpentyny
 	mov	qword [variable_multitasking_serpentine_start_address],	rdi
 
-	; utwórz pierwszy rekord w serpentynie procesów, czyli jądro systemu
+	; utwórz pierwszy rekord w serpentynie procesów, czyli jądro systemu ---
 
 	; bezpośredni adres do aktywnego rekordu
 	mov	qword [variable_multitasking_serpentine_record_active_address],	rdi

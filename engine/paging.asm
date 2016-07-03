@@ -39,7 +39,7 @@ cyjon_page_find_free_memory_physical:
 	push	rcx
 	push	rdx
 	push	rsi
-	pushf
+	pushfq
 
 	; czy my wiemy wogóle co robimy?
 	cmp	rcx,	VARIABLE_EMPTY
@@ -52,7 +52,7 @@ cyjon_page_find_free_memory_physical:
 	mov	byte [variable_page_semaphore],	VARIABLE_TRUE
 
 	; sprawdź czy istnieje możliwość zarezerowania podanej przestrzeni (jeśli nie jest pofragmentowana)
-	cmp	qword [variable_binary_memory_map_free_pages],	rcx
+	cmp	qword [variable_binary_memory_map_free],	rcx
 	jb	.no_memory
 
 .restart:
@@ -107,7 +107,7 @@ cyjon_page_find_free_memory_physical:
 	; przesuń wskaźnik na poprzedni bit
 	inc	rcx
 
-	; zarezerwuj pozostałe strone
+	; zarezerwuj pozostałe strony
 	dec	rdx
 	jnz	.found
 
@@ -142,6 +142,10 @@ cyjon_page_find_free_memory_physical:
 	; zamień adres fizyczny względny na bezwzględny
 	add	rdi,	VARIABLE_KERNEL_PHYSICAL_ADDRESS
 
+	; zmniejsz ilość dostępnej pamięci
+	mov	rax,	qword [rsp + ( VARIABLE_QWORD_SIZE * 0x03 )]
+	sub	qword [variable_binary_memory_map_free],	rax
+
 	; zwróć wynik
 	jmp	.end
 
@@ -154,7 +158,7 @@ cyjon_page_find_free_memory_physical:
 	mov	byte [variable_page_semaphore],	VARIABLE_FALSE
 
 	; przywróć oryginalne rejestry
-	popf
+	popfq
 	pop	rsi
 	pop	rdx
 	pop	rcx
@@ -181,6 +185,9 @@ cyjon_page_release_physical_area:
 	; zwolnij kolejne strony
 	call	cyjon_page_release
 
+	; zwiększ ilość wolnej przestrzeni
+	inc	qword [variable_binary_memory_map_free]
+
 	; przesuń wskaźnik na następną stonę
 	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
 
@@ -195,9 +202,9 @@ cyjon_page_release_physical_area:
 	ret
 
 ;===============================================================================
-; procedura zwalnia strony zajęte przez tablicę PML4
+; procedura zwalnia WSZYSTKIE strony zajęte przez tablicę PMLx
 ; IN:
-;	rbx = 4, poziom tablicy PML rozpoczynający
+;	rbx - poziom tablicy PML rozpoczynający
 ;	rcx - ilość rekordów do zwolnienia z tablicy
 ;	rdi - wskaźnik do tablicy PML4 (+przesunięcie, jeśli potrzeba)
 ;	
@@ -237,6 +244,14 @@ cyjon_page_release_area:
 	; zwolnij przestrzeń
 	call	cyjon_page_release
 
+	; zwolniono tablicę PML > 1
+	cmp	rbx,	1
+	je	.no_release_table
+
+	; zmniejszono rozmiar stronicowania
+	dec	qword [variable_binary_memory_map_paged]
+
+.no_release_table:
 	; wróć do poprzedniego poziomu tablicy PML
 	inc	rbx
 
@@ -276,7 +291,6 @@ cyjon_page_release_area:
 	and	di,	0xFF00	; usuń flagi
 
 	; wyczyść i zwolnij przestrzeń
-	call	cyjon_page_clear
 	call	cyjon_page_release
 
 	;przywróć oryginalny rejestr
@@ -303,6 +317,9 @@ recreate_paging:
 	; PML4, PML3(PDP), PML2(PD), PML1(PT) - prostrze i wygodniejsze
 	call	cyjon_page_allocate
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -314,7 +331,7 @@ recreate_paging:
 	; ustaw właściwości rekordów/stron w tablicach stronicowania
 	mov	rbx,	3	; flagi: 4 KiB, Administrator, Odczyt/Zapis, Dostępna
 	; opisz w tablicach stronicowania jądra przestrzeń o rozmiarze N stron
-	mov	rcx,	qword [variable_binary_memory_map_total_pages]
+	mov	rcx,	qword [variable_binary_memory_map_total]
 	; załaduj adres fizyczny/logiczny tablicy PML4 jądra
 	mov	r11,	rdi
 
@@ -382,11 +399,11 @@ cyjon_page_allocate:
 	mov	byte [variable_page_allocate_semaphore],	VARIABLE_TRUE
 
 	; sprawdź czy istnieją dostępne strony
-	cmp	qword [variable_binary_memory_map_free_pages],	VARIABLE_EMPTY
+	cmp	qword [variable_binary_memory_map_free],	VARIABLE_EMPTY
 	je	.end	; brak, zakończ procedurę
 
 	; istnieją dostępne strony, zmniejsz ich ilość o jedną
-	dec	qword [variable_binary_memory_map_free_pages]
+	dec	qword [variable_binary_memory_map_free]
 
 	; załaduj do wskaźnika źródłowego adres logiczny początku binarnej mapy pamięci
 	mov	rsi,	qword [variable_binary_memory_map_address_start]
@@ -563,7 +580,7 @@ cyjon_page_release:
 	stosq
 
 	; zwiększamy ilość dostępnych stron o jedną
-	inc	qword [variable_binary_memory_map_free_pages]
+	inc	qword [variable_binary_memory_map_free]
 
 	; zwolnij binarną mapę pamięci
 	mov	byte [variable_page_allocate_semaphore],	VARIABLE_EMPTY
@@ -619,7 +636,7 @@ cyjon_page_map_physical_area:
 	call	cyjon_page_calculate_requirements
 
 	; sprawdź czy istnieje odpowiednia ilość 
-	cmp	qword [variable_binary_memory_map_free_pages],	rcx
+	cmp	qword [variable_binary_memory_map_free],	rcx
 	jb	.no_memory
 
 	; przywróć oryginalne rejestry
@@ -837,6 +854,9 @@ cyjon_page_prepare_pml_variables:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory	; brak dostępnych stron
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -894,6 +914,9 @@ cyjon_page_prepare_pml_variables:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory	; brak dostępnych stron
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -950,6 +973,9 @@ cyjon_page_prepare_pml_variables:
 	mov	dl,	2	; flaga/numer tablicy PML gdzie jesteśmy
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory	; brak dostępnych stron
+
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
 
 	; wyczyść stronę
 	call	cyjon_page_clear
@@ -1064,6 +1090,9 @@ cyjon_page_prepare_pml_variables:
 	; zwolnij stronę
 	call	cyjon_page_release
 
+	; zmniejszono rozmiar stronicowania
+	dec	qword [variable_binary_memory_map_paged]
+
 	; usuń rekord z tablicy nadrzędnej
 	mov	qword [rax],	VARIABLE_EMPTY
 
@@ -1134,6 +1163,9 @@ cyjon_page_new_pml1:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -1194,6 +1226,9 @@ cyjon_page_new_pml1:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; wyczyść stronę
 	call	cyjon_page_clear
 
@@ -1250,6 +1285,9 @@ cyjon_page_new_pml1:
 	; sprawdź czy zaalokowano stronę
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory
+
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
 
 	; wyczyść stronę
 	call	cyjon_page_clear
@@ -1323,7 +1361,7 @@ cyjon_page_map_logical_area:
 	add	rcx,	qword [rsp]
 
 	; sprawdź czy istnieje odpowiednia ilość 
-	cmp	qword [variable_binary_memory_map_free_pages],	rcx
+	cmp	qword [variable_binary_memory_map_free],	rcx
 	jb	.no_memory
 
 	; przywróć oryginalny rejestr

@@ -14,6 +14,7 @@ all:
 	$(ASM) $(SOFTWARE)/help.asm		-o $(BUILD)/help.bin
 	$(ASM) $(SOFTWARE)/httpd.asm		-o $(BUILD)/httpd.bin
 	$(ASM) $(SOFTWARE)/kill.asm		-o $(BUILD)/kill.bin
+	$(ASM) $(SOFTWARE)/free.asm		-o $(BUILD)/free.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -31,4 +32,5 @@ clean:
 		$(BUILD)/ip.bin		\
 		$(BUILD)/help.bin	\
 		$(BUILD)/httpd.bin	\
-		$(BUILD)/kill.bin
+		$(BUILD)/kill.bin	\
+		$(BUILD)/free.bin

@@ -41,6 +41,9 @@ daemon_garbage_collector:
 	mov	rdi,	qword [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.ARGS]
 	call	cyjon_page_release
 
+	; zmniejszono rozmiar buforów
+	dec	qword [variable_binary_memory_map_cached]
+
 	pop	rdi
 
 .no_args:
@@ -67,6 +70,9 @@ daemon_garbage_collector:
 
 	; zwolnij przestrzeń spod tablicy PML4 procesu
 	call	cyjon_page_release
+
+	; mniejszono rozmiar stronicowania
+	dec	qword [variable_binary_memory_map_paged]
 
 	; koniec zadań, przekaż resztę cykli
 	hlt

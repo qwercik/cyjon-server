@@ -179,6 +179,9 @@ cyjon_process_init:
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.backward_process_init	; nie, zakończ procedurę uruchamiania procesu
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; załaduj tablicę PML4 procesu
 	mov	r11,	rdi
 
@@ -195,6 +198,9 @@ cyjon_process_init:
 	; przynano miejsce?
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.backward_process_init
+
+	; zwiększono rozmiar buforów
+	inc	qword [variable_binary_memory_map_cached]
 
 	; przywróć adres tablicy PML4, zachowaj adres przestrzeni argumentów
 	xchg	rdi,	qword [rsp]
@@ -380,6 +386,9 @@ cyjon_process_init_phase_0:
 	; przygotuj miejsce dla tablicy PML4
 	call	cyjon_page_allocate
 
+	; zwiększono rozmiar stronicowania
+	inc	qword [variable_binary_memory_map_paged]
+
 	; zachowaj adres tablicy PML4
 	mov	r11,	rdi
 
@@ -448,6 +457,9 @@ cyjon_process_init_phase_1:
 	; sprawdź czy przydzielono stronę
 	cmp	rdi,	VARIABLE_EMPTY
 	je	.no_memory
+
+	; zwiększono rozmiar buforów
+	inc	qword [variable_binary_memory_map_cached]
 
 	; wyczyść stronę
 	call	cyjon_page_clear

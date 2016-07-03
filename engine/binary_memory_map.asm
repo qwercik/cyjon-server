@@ -13,8 +13,11 @@
 
 variable_binary_memory_map_address_start	dq	VARIABLE_EMPTY
 variable_binary_memory_map_address_end		dq	VARIABLE_EMPTY
-variable_binary_memory_map_total_pages		dq	VARIABLE_EMPTY
-variable_binary_memory_map_free_pages		dq	VARIABLE_EMPTY
+variable_binary_memory_map_total		dq	VARIABLE_EMPTY
+variable_binary_memory_map_free			dq	VARIABLE_EMPTY
+variable_binary_memory_map_cached		dq	VARIABLE_EMPTY
+variable_binary_memory_map_paged		dq	VARIABLE_EMPTY
+variable_binary_memory_map_reserved		dq	VARIABLE_EMPTY
 
 ; 64 bitowy kod
 [BITS 64]
@@ -105,8 +108,8 @@ binary_memory_map:
 	shr	rax,	12	; / 4096
 
 	; zapamiętaj
-	mov	qword [variable_binary_memory_map_total_pages],	rax
-	mov	qword [variable_binary_memory_map_free_pages],	rax
+	mov	qword [variable_binary_memory_map_total],	rax
+	mov	qword [variable_binary_memory_map_free],	rax
 
 	; przelicz liczbę stron na ilość "pakietów" po 64 bity, każdy
 	shr	rax,	VARIABLE_DIVIDE_BY_64
@@ -153,6 +156,9 @@ binary_memory_map:
 	; pobierz pierwszą dostępną stronę
 	call	cyjon_page_allocate
 
+	; strony zarezerwowane
+	inc	qword [variable_binary_memory_map_reserved]
+
 	; wykonaj raz jeszcze
 	loop	.disable
 
@@ -169,7 +175,7 @@ binary_memory_map:
 	mov	rsi,	text_binary_memory_map_available_memory
 	call	cyjon_screen_print_string
 
-	mov	rax,	qword [variable_binary_memory_map_free_pages]
+	mov	rax,	qword [variable_binary_memory_map_total]
 	shl	rax,	VARIABLE_MULTIPLE_BY_4	; KiB
 	mov	bl,	VARIABLE_COLOR_DEFAULT
 	mov	cx,	0x000A	; brak cyfr wiodących, system dziesiętny

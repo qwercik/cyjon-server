@@ -35,7 +35,9 @@ irq64:
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_KEYBOARD
 	je	.keyboard
 
-
+	; obsługa systemu?
+	cmp	ah,	VARIABLE_KERNEL_SERVICE_SYSTEM
+	je	.system
 
 	; obsługa sieci?
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_NETWORK
@@ -112,6 +114,14 @@ irq64:
 	; pobierz kod klawisza z bufora klawiatury?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_KEYBOARD_GET_KEY
 	je	irq64_keyboard_get_key
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+.system:
+	; pobierz właściwości pamięci?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SYSTEM_MEMORY
+	je	irq64_system_memory
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -684,6 +694,18 @@ irq64_screen_cursor_set:
 irq64_keyboard_get_key:
 	; pobierz kod ASCII klawisza z bufora klawiatury
 	call	cyjon_keyboard_key_read
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;===============================================================================
+;===============================================================================
+irq64_system_memory:
+	mov	r11,	qword [variable_binary_memory_map_total]
+	mov	r12,	qword [variable_binary_memory_map_free]
+	mov	r13,	qword [variable_binary_memory_map_paged]
+	mov	r14,	qword [variable_binary_memory_map_cached]
+	mov	r15,	qword [variable_binary_memory_map_reserved]
 
 	; koniec obsługi przerwania programowego
 	iretq
