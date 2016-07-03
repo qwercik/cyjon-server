@@ -38,7 +38,7 @@ interrupt_descriptor_table:
 	mov	qword [variable_idt_structure.address],	rdi
 
 	; utworzymy obsługę 32 wyjątków (zombi, w przyszłości utworzy się odpowiednie procedury obsługi) procesora
-	mov	rax,	idt_cpu_exception
+	mov	rax,	idt_cpu_exception_default
 	mov	bx,	0x8E00	; typ - wyjątek procesora
 	mov	rcx,	32	; wszystkie wyjątki procesora
 	call	recreate_record	; utwórz
@@ -46,14 +46,14 @@ interrupt_descriptor_table:
 	; utworzymy obsługę 16 przerwań (zombi) sprzętowych
 	; gdyby jakimś cudem wystąpiły
 	; co niektóre dostaną prawidłową procedurę obsługi
-	mov	rax,	idt_hardware_interrupt
+	mov	rax,	idt_hardware_interrupt_default
 	mov	bx,	VARIABLE_IDT_RECORD_TYPE_CPU	; typ - przerwanie sprzętowe
 	mov	rcx,	16	; wszystkie przerwania sprzętowe
 	call	recreate_record	; utwórz
 
 	; utworzymy obsługę pozostałych 208 przerwań (zombi) programowych
 	; tylko jedno z nich (przerwanie 64, 0x40) dostanie prawidłową procedurę obsługi
-	mov	rax,	idt_software_interrupt
+	mov	rax,	idt_software_interrupt_default
 	mov	bx,	VARIABLE_IDT_RECORD_TYPE_SOFTWARE	; typ - przerwanie programowe
 	mov	rcx,	208	; pozostałe rekordy w tablicy
 	call	recreate_record	; utwórz
@@ -107,10 +107,40 @@ interrupt_descriptor_table:
 ;	brak
 ;
 ; wszystkie rejestry zachowane
-idt_cpu_exception:
-	; wyświetl informację
-	mov	rsi,	text_kernel_panic_cpu_interrupt
-	jmp	cyjon_screen_kernel_panic	; plik: engine/screen.asm
+idt_cpu_exception_default:
+	; wyświetl wskaźnik do nazwy procesu
+	mov	bl,	VARIABLE_COLOR_LIGHT_RED
+	mov	rcx,	VARIABLE_FULL
+	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_arrow_right
+	call	cyjon_screen_print_string
+
+	; ustaw wskaźnik do procesu serpentyny
+	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
+
+	; wyświetl nazwę procesu
+	mov	rsi,	rdi
+	add	rsi,	VARIABLE_TABLE_SERPENTINE_RECORD.NAME
+	call	cyjon_screen_print_string
+
+	; przesuń kursor do następnej linii
+	mov	rsi,	text_return
+	call	cyjon_screen_print_string
+
+	; wyświetl informacje, dlaczego proces został zatrzymany
+	mov	rsi,	text_process_prohibited_operation
+	call	cyjon_screen_print_string
+
+	; ustaw flagę "proces zakończony", "rekord nieaktywny"
+	and	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	~STATIC_SERPENTINE_RECORD_FLAG_ACTIVE
+	or	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	STATIC_SERPENTINE_RECORD_FLAG_CLOSED
+
+	; zakończ obsługę procesu
+	sti
+	hlt
+
+	; zatrzymaj dalsze wykonywanie kodu procesu, jeśli coś poszło nie tak??
+	jmp	$
 
 ;===============================================================================
 ; procedura podstawowej obsługi przerwania sprzętowego
@@ -120,10 +150,31 @@ idt_cpu_exception:
 ;	brak
 ;
 ; wszystkie rejestry zachowane
-idt_hardware_interrupt:
-	; wyświetl informację
-	mov	rsi,	text_kernel_panic_hardware_interrupt
-	jmp	cyjon_screen_kernel_panic	; plik: engine/screen.asm
+idt_hardware_interrupt_default:
+	; zachowaj oryginalne rejestry
+	push	rax
+	pushf
+
+	; poinformuj kontroler PIC o obsłużeniu przerwania sprzętowego
+	mov	al,	0x20
+
+	; przerwane obsługiwane w trybie kaskady?
+	cmp	byte [variable_network_i8254x_irq],	8
+	jb	.no_cascade
+
+	; wyślij do kontrolera "kaskadowego"
+	out	VARIABLE_PIC_COMMAND_PORT1,	al
+
+.no_cascade:
+	; wyślij do kontrolera głównego
+	out	VARIABLE_PIC_COMMAND_PORT0,	al
+
+	; przywróć oryginalne rejestry
+	popf
+	pop	rax
+
+	; powrót z przerwania sprzetowego
+	iretq
 
 ;===============================================================================
 ; procedura podstawowej obsługi przerwania programowego
@@ -133,16 +184,29 @@ idt_hardware_interrupt:
 ;	brak
 ;
 ; wszystkie rejestry zachowane
-idt_software_interrupt:
-	; wyświetl informację
+idt_software_interrupt_default:
+	; wyświetl wskaźnik do nazwy procesu
 	mov	bl,	VARIABLE_COLOR_LIGHT_RED
 	mov	rcx,	VARIABLE_FULL
 	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	mov	rsi,	text_kernel_panic_software_interrupt
+	mov	rsi,	text_arrow_right
 	call	cyjon_screen_print_string
 
-	; zatrzymaj aktualnie uruchomiony proces
+	; ustaw wskaźnik do procesu serpentyny
 	mov	rdi,	qword [variable_multitasking_serpentine_record_active_address]
+
+	; wyświetl nazwę procesu
+	mov	rsi,	rdi
+	add	rsi,	VARIABLE_TABLE_SERPENTINE_RECORD.NAME
+	call	cyjon_screen_print_string
+
+	; przesuń kursor do następnej linii
+	mov	rsi,	text_return
+	call	cyjon_screen_print_string
+
+	; wyświetl informacje, dlaczego proces został zatrzymany
+	mov	rsi,	text_process_prohibited_operation
+	call	cyjon_screen_print_string
 
 	; ustaw flagę "proces zakończony", "rekord nieaktywny"
 	and	byte [rdi + VARIABLE_TABLE_SERPENTINE_RECORD.FLAGS],	~STATIC_SERPENTINE_RECORD_FLAG_ACTIVE

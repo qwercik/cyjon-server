@@ -11,16 +11,17 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-text_caution							db	"::", VARIABLE_ASCII_CODE_TERMINATOR
-text_colon							db	":", VARIABLE_ASCII_CODE_TERMINATOR
-text_paragraph							db	VARIABLE_ASCII_CODE_RETURN
+text_arrow_right			db	"-> ", VARIABLE_ASCII_CODE_TERMINATOR
+text_caution				db	"::", VARIABLE_ASCII_CODE_TERMINATOR
+text_colon				db	":", VARIABLE_ASCII_CODE_TERMINATOR
+text_paragraph				db	VARIABLE_ASCII_CODE_RETURN
 
-text_kib							db	" KiB", VARIABLE_ASCII_CODE_TERMINATOR
-text_mib							db	" MiB", VARIABLE_ASCII_CODE_TERMINATOR
+text_kib				db	" KiB", VARIABLE_ASCII_CODE_TERMINATOR
+text_mib				db	" MiB", VARIABLE_ASCII_CODE_TERMINATOR
 
-text_irq							db	", IRQ ", VARIABLE_ASCII_CODE_TERMINATOR
+text_irq				db	", IRQ ", VARIABLE_ASCII_CODE_TERMINATOR
 
-text_return							db	VARIABLE_ASCII_CODE_RETURN
+text_return				db	VARIABLE_ASCII_CODE_RETURN
 
 ; Multiboot Information Structure
 struc	MIS
@@ -43,4 +44,4 @@ variable_idt_structure:
 	.address	dq	VARIABLE_EMPTY
 
 ; ilość 0.001 sekundy upłyniętych od inicjalizacji jądra systemu
-variable_system_microtime					dq	VARIABLE_EMPTY
+variable_system_microtime		dq	VARIABLE_EMPTY
