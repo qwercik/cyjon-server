@@ -27,6 +27,7 @@
 [ORG VARIABLE_MEMORY_HIGH_REAL_ADDRESS]
 
 start:
+	; wyświetl nagłówek i pierwszą nazwę wiersza tabeli
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
 	mov	ebx,	VARIABLE_COLOR_DEFAULT
 	mov	ecx,	VARIABLE_FULL
@@ -34,101 +35,104 @@ start:
 	mov	rsi,	text_header
 	int	STATIC_KERNEL_SERVICE
 
+	; pobierz informacje o pamięci systemu
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SYSTEM_MEMORY
 	int	STATIC_KERNEL_SERVICE
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
-	mov	ecx,	10	; system dziesiętny
-	mov	r8,	r11
-	shl	r8,	2	; *4 KiB
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	edx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	int	STATIC_KERNEL_SERVICE
-
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	rsi,	text_kib
-	int	STATIC_KERNEL_SERVICE
-
+	; pobierz pozycję kursora na ekranie
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_GET
 	int	STATIC_KERNEL_SERVICE
 
+	; zapamiętaj
 	push	rbx
 
-	mov	dword [rsp],	22	; 'used' column
-	mov	rbx,	qword [rsp]
-
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
-	int	STATIC_KERNEL_SERVICE
-
+	; TOTAL ----------------------------------------------------------------
+	; wyświetl rozmiar całkowity pamięci
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
-	mov	r8,	r11
-	sub	r8,	r12
-	shl	r8,	2	; *4 KiB
 	mov	ebx,	VARIABLE_COLOR_DEFAULT
+	mov	ecx,	VARIABLE_NUMBER_SYSTEM_DECIMAL
+	mov	r8,	r11	; ilość stron
+	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	rsi,	text_kib
+	; przesuń kursor na pozycję kolumny USED
+	mov	dword [rsp],	22
+
+	; wyświetl typ rozmiaru i ustaw kursor na następną kolumnę
+	call	.next_column
+
+	; USED -----------------------------------------------------------------
+	; wyświetl rozmiar wykorzystanej pamięci
+	mov	r8,	r11	; rozmiar całkowity
+	sub	r8,	r12	; zmniejszony o rozmiar wolnej
+	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
-	mov	dword [rsp],	36	; 'free' column
-	mov	rbx,	qword [rsp]
+	; przesuń kursor na pozycję kolumny USED
+	mov	dword [rsp],	36
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
-	int	STATIC_KERNEL_SERVICE
+	; wyświetl typ rozmiaru i ustaw kursor na następną kolumnę
+	call	.next_column
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
+	; FREE -----------------------------------------------------------------
+	; wyświetl rozmiar wolnej pamięci
 	mov	r8,	r12
-	shl	r8,	2	; *4 KiB
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
+	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	rsi,	text_kib
-	int	STATIC_KERNEL_SERVICE
+	; przesuń kursor na pozycję kolumny USED
+	mov	dword [rsp],	50
 
-	mov	dword [rsp],	50	; 'cached' column
-	mov	rbx,	qword [rsp]
+	; wyświetl typ rozmiaru i ustaw kursor na następną kolumnę
+	call	.next_column
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
-	int	STATIC_KERNEL_SERVICE
-
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
+	; CACHED ---------------------------------------------------------------
+	; wyswietl rozmiar pamięci buforowanej
 	mov	r8,	r14
-	shl	r8,	2	; *4 KiB
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
+	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	rsi,	text_kib
-	int	STATIC_KERNEL_SERVICE
+	; przesuń kursor na pozycję kolumny USED
+	mov	dword [rsp],	64
 
-	mov	dword [rsp],	64	; 'paged' column
-	mov	rbx,	qword [rsp]
+	; wyświetl typ rozmiaru i ustaw kursor na następną kolumnę
+	call	.next_column
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
-	int	STATIC_KERNEL_SERVICE
-
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
+	; SHARED ---------------------------------------------------------------
+	; wyświetl rozmiar pamięci współdzielonej
 	mov	r8,	r15
-	shl	r8,	2	; *4 KiB
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
+	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	ebx,	VARIABLE_COLOR_DEFAULT
-	mov	rsi,	text_kib
-	int	STATIC_KERNEL_SERVICE
+	; wyświetl typ rozmiaru
+	call	.next_column
 
-	mov	rsi,	text_paragraph
-	int	STATIC_KERNEL_SERVICE
-
+	; koniec programu
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE
+
+.next_column:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+
+	; wyświetl typ rozmiaru
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
+	mov	ebx,	VARIABLE_COLOR_DEFAULT
+	mov	rsi,	text_kib
+	int	STATIC_KERNEL_SERVICE
+
+	; zatwierdź
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
+	mov	rbx,	qword [rsp]
+	int	STATIC_KERNEL_SERVICE
+
+	; przywróć oryginalne rejestry
+	pop	rbx
+	pop	rax
+
+	; powrót z procedury
+	ret
 
 ; wczytaj lokalizacje programu systemu
 %push
