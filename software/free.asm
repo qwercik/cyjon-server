@@ -55,6 +55,8 @@ start:
 	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
+	xchg	bx,bx
+
 	; przesuń kursor na pozycję kolumny USED
 	mov	dword [rsp],	22
 
@@ -124,7 +126,7 @@ start:
 
 	; zatwierdź
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
-	mov	rbx,	qword [rsp]
+	mov	rbx,	qword [rsp + VARIABLE_QWORD_SIZE * 3]
 	int	STATIC_KERNEL_SERVICE
 
 	; przywróć oryginalne rejestry
