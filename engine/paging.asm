@@ -338,12 +338,12 @@ recreate_paging:
 	; mapuj opisaną przestrzeń fizyczną
 	call	cyjon_page_map_physical_area
 
-	; opisz w tablicach stronicowania jądra przestrzeń pamieci ekranu trybu tekstowego 80x25@4
-	mov	rax,	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
+	; opisz w tablicach stronicowania jądra całą przestrzeń pamieci ekranu trybu tekstowego i graficznego
+	mov	rax,	VARIABLE_VIDEO_MODE_BASE_ADDRESS
 	; ustaw właściwości rekordów/stron w tablicach stronicowania
 	mov	rbx,	3	; flagi: 4 KiB, Administrator, Odczyt/Zapis, Dostępna
 	; opisz w tablicach stronicowania jądra przestrzeń o rozmiarze N stron
-	mov	rcx,	VARIABLE_MEMORY_PAGE_SIZE
+	mov	rcx,	VARIABLE_VIDEO_MODE_SIZE / VARIABLE_MEMORY_PAGE_SIZE
 	; załaduj adres fizyczny/logiczny tablicy PML4 jądra
 	mov	r11,	rdi
 

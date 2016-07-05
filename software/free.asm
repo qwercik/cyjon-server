@@ -55,8 +55,6 @@ start:
 	shl	r8,	VARIABLE_MULTIPLE_BY_4	; strony zamień na KiB
 	int	STATIC_KERNEL_SERVICE
 
-	xchg	bx,bx
-
 	; przesuń kursor na pozycję kolumny USED
 	mov	dword [rsp],	22
 

@@ -221,6 +221,12 @@ start:
 	jmp	start
 
 .process:
+	; sprawdź czy proces zostawić w tle
+	mov	al,	VARIABLE_ASCII_CODE_SPACE
+	mov	ah,	"&"
+	cmp	word [rdi + rdx - 0x02],	ax
+	je	start ; nie czekaj na zakończenie procesu
+
 	; sprawdź czy proces istnieje
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_CHECK	; procedura przeszukuje tablice procesów za podanym identyfikatorem w rejestrze RCX
 

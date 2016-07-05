@@ -53,21 +53,6 @@ start:
 	mov	rsi,	text_port_busy
 	je	.error
 
-	; wyświetl informacje o uruchomieniu serwera www
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	bl,	VARIABLE_COLOR_DEFAULT
-	mov	rcx,	VARIABLE_FULL
-	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	mov	rsi,	text_port_start
-	int	STATIC_KERNEL_SERVICE
-
-	; numer portu
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_NUMBER
-	mov	bl,	VARIABLE_COLOR_DEFAULT
-	mov	cx,	0x000A
-	mov	r8,	VARIABLE_HTTPD_PORT_DEFAULT
-	int	STATIC_KERNEL_SERVICE
-
 .restart:
 	; rozmiar bufora w rekordach
 	mov	rcx,	VARIABLE_HTTPD_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_CACHE_DEFAULT.SIZE

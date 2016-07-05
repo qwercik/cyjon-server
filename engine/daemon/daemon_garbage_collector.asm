@@ -68,6 +68,35 @@ daemon_garbage_collector:
 	; przywróć adres tablicy PML4 procesu
 	pop	rdi
 
+	; sprawdź czy dostępna jest tablica portów
+	cmp	byte [variable_daemon_tcp_ip_stack_semaphore],	VARIABLE_EMPTY
+	je	.no_network
+
+	; zwolnij wszystkie porty zarezerwowane przez proces
+	mov	rcx,	VARIABLE_DAEMON_TCP_IP_STACK_TABLE_PORT_SIZE
+	mov	rsi,	qword [variable_daemon_tcp_ip_stack_table_port]
+
+.network:
+	; rekord zawiera opis procesu?
+	cmp	qword [rsi + STRUCTURE_DAEMON_TCP_IP_STACK_TABLE_PORT.cr3],	rdi
+	je	.network_release
+
+.network_continue:
+	; sprawdź następny rekord
+	add	rsi,	STRUCTURE_DAEMON_TCP_IP_STACK_TABLE_PORT.SIZE
+	loop	.network
+
+	; brak zajętych portów
+	jmp	.no_network
+
+.network_release:
+	; zwolnij port
+	mov	qword [rsi + STRUCTURE_DAEMON_TCP_IP_STACK_TABLE_PORT.cr3],	VARIABLE_EMPTY
+
+	; kontynuuj
+	jmp	.network_continue
+
+.no_network:
 	; zwolnij przestrzeń spod tablicy PML4 procesu
 	call	cyjon_page_release
 

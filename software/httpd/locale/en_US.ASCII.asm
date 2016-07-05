@@ -1,4 +1,3 @@
-text_port_start	db	"Server running at port ", VARIABLE_ASCII_CODE_TERMINATOR
 text_port_busy	db	"Error, port busy.", VARIABLE_ASCII_CODE_RETURN
 
 variable_httpd_answer_200		db	'HTTP/1.1 200 OK', VARIABLE_ASCII_CODE_NEWLINE
