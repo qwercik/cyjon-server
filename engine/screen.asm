@@ -81,7 +81,7 @@ cyjon_screen_init:
 
 	; oblicz rozmiar linii znaków w Bajtach
 	xor	rdx,	rdx
-	mul	qword [variable_font_y_in_pixels]
+	mul	qword [matrix_font_y_in_pixels]
 	mov	qword [variable_screen_line_of_chars_in_bytes],	rax
 
 	; wysokość rozdzielczości w pikselach
@@ -103,7 +103,7 @@ cyjon_screen_init:
 	add	qword [variable_screen_base_address_end],	rax
 
 	; oblicz szekorość znaku w Bajtach
-	mov	rax,	qword [variable_font_x_in_pixels]
+	mov	rax,	qword [matrix_font_x_in_pixels]
 	mov	rcx,	qword [variable_screen_depth]
 	shr	rcx,	VARIABLE_DIVIDE_BY_2
 	shl	rax,	cl
@@ -112,13 +112,13 @@ cyjon_screen_init:
 	; oblicz ilość znaków na szerokość ekranu
 	mov	rax,	qword [variable_screen_width]
 	xor	rdx,	rdx
-	div	qword [variable_font_x_in_pixels]
+	div	qword [matrix_font_x_in_pixels]
 	mov	qword [variable_screen_width_on_chars],	rax
 
 	; oblicz ilość znaków na wysokość ekranu
 	mov	rax,	qword [variable_screen_height]
 	xor	rdx,	rdx
-	div	qword [variable_font_y_in_pixels]
+	div	qword [matrix_font_y_in_pixels]
 	mov	qword [variable_screen_height_on_chars],	rax
 
 	; włącz informację o trybie graficznym
@@ -463,7 +463,7 @@ cyjon_screen_print_char:
 	push	rdx
 	push	rdi
 
-	; sprawdź czy zanki specjalne
+	; sprawdź czy znaki specjalne
 	cmp	al,	VARIABLE_ASCII_CODE_ENTER
 	je	.graphics_enter
 	cmp	al,	VARIABLE_ASCII_CODE_NEWLINE
@@ -473,11 +473,19 @@ cyjon_screen_print_char:
 
 	; oblicz przesunięcie w macierzy znaków
 	xor	rdx,	rdx
-	mul	qword [variable_font_x_in_pixels]
-	mul	qword [variable_font_y_in_pixels]
+	mov	r8,	qword [matrix_font_x_in_pixels]
+	cmp	byte [matrix_font_semaphore],	VARIABLE_FALSE
+	je	.compressed
+	
+	; czcionka nieskompresowana
+	inc	r8
+
+.compressed:
+	mul	r8
+	mul	qword [matrix_font_y_in_pixels]
 
 	; ustaw wskaźnik na macierz znaku do wyświetlenia
-	mov	rsi,	matrix_font_unpacked
+	mov	rsi,	matrix_font
 	add	rsi,	rax
 
 	; ustaw kolor i tło wypisywanych znaków
@@ -487,11 +495,18 @@ cyjon_screen_print_char:
 	mov	edx,	dword [table_color_palette_32_bit + rdx * VARIABLE_DWORD_SIZE]
 
 	; wysokość znaku w pikselach
-	mov	r8,	qword [variable_font_y_in_pixels]
+	mov	r8,	qword [matrix_font_y_in_pixels]
 
 .restart:
 	; szerokość znaku w pikselach
-	mov	rcx,	qword [variable_font_x_in_pixels]
+	mov	rcx,	qword [matrix_font_x_in_pixels]
+
+	; przesuń wskaźnik na macierz znaku (pomiń flgę)
+	inc	rsi
+
+	; sprawdź flagę linii macierzy znaku
+	cmp	byte [rsi - VARIABLE_BYTE_SIZE],	VARIABLE_FALSE
+	je	.background_full	; brak bikseli, wyświetl w całej linii tło
 
 .line:
 	; pobierz stan piksela z macierzy znaku
@@ -517,6 +532,7 @@ cyjon_screen_print_char:
 	; następny piksel
 	loop	.line
 
+.matrix_continue:
 	; koniec N-tej linii w macierzy znaku
 	dec	r8
 	jz	.ready	; znak wyświetlony
@@ -530,6 +546,17 @@ cyjon_screen_print_char:
 
 	; kontynuuj od następnej linii
 	jmp	.restart
+
+.background_full:
+	; wyłącz piksele
+	mov	eax,	edx
+	rep	stosd
+
+	; przesuń wskaźnik na następną linię macierzy znaku
+	add	rsi,	qword [matrix_font_x_in_pixels]
+
+	; kontynuuj pozostałe linie
+	jmp	.matrix_continue
 
 .ready:
 	; przesuń wirtualny kursor o jedną pozycję w prawo
@@ -1040,7 +1067,7 @@ cyjon_screen_cursor_invert:
 	push	rdi
 
 	; wysokość kursora
-	mov	rbx,	qword [variable_font_y_in_pixels]
+	mov	rbx,	qword [matrix_font_y_in_pixels]
 
 	; szerokosć kursora w bitach
 	mov	rcx,	qword [variable_screen_depth]
