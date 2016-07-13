@@ -47,16 +47,10 @@ daemon_garbage_collector:
 	pop	rdi
 
 .no_args:
-	; wyłącz przerwania
-	cli
-	
 	; wyczyść rekord w tablicy
 	xor	al,	al
 	mov	rcx,	VARIABLE_TABLE_SERPENTINE_RECORD.SIZE
 	rep	stosb
-
-	; włącz przerwania
-	sti
 
 	; zwolnij pamięć zajętą przez proces
 	mov	rdi,	rbx	; załaduj adres tablicy PML4 procesu

@@ -56,4 +56,5 @@ text_cpu_exception_16				db	"x87 Floating-Point Exception", VARIABLE_ASCII_CODE_
 text_cpu_exception_17				db	"Alignment Check", VARIABLE_ASCII_CODE_RETURN
 text_cpu_exception_18				db	"Machine Check", VARIABLE_ASCII_CODE_RETURN
 text_cpu_exception_19				db	"SIMD Floating-Point Exception", VARIABLE_ASCII_CODE_RETURN
-text_cpu_exception_20				db	"Security Exception O_o", VARIABLE_ASCII_CODE_RETURN
+text_cpu_exception_20				db	"Virtualization Exception", VARIABLE_ASCII_CODE_RETURN
+text_cpu_exception_30				db	"Security Exception O_o", VARIABLE_ASCII_CODE_RETURN
