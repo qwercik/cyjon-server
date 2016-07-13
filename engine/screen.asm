@@ -479,9 +479,9 @@ cyjon_screen_print_char:
 	
 	; czcionka nieskompresowana
 	inc	r8
+	mul	r8
 
 .compressed:
-	mul	r8
 	mul	qword [matrix_font_y_in_pixels]
 
 	; ustaw wskaźnik na macierz znaku do wyświetlenia
@@ -496,6 +496,10 @@ cyjon_screen_print_char:
 
 	; wysokość znaku w pikselach
 	mov	r8,	qword [matrix_font_y_in_pixels]
+
+	; przetwarzać czcionkę skompresowaną?
+	cmp	byte [matrix_font_semaphore],	VARIABLE_FALSE
+	je	.compressed_next_line
 
 .restart:
 	; szerokość znaku w pikselach
@@ -533,7 +537,7 @@ cyjon_screen_print_char:
 	loop	.line
 
 .matrix_continue:
-	; koniec N-tej linii w macierzy znaku
+	; koniec N-tej linii w macierzy znaku?
 	dec	r8
 	jz	.ready	; znak wyświetlony
 
@@ -578,6 +582,71 @@ cyjon_screen_print_char:
 
 	; powrót z procedury
 	ret
+
+;===============================================================================
+.compressed_next_line:
+	; szerokość matrycy znaku w pikselach
+	mov	rcx,	qword [matrix_font_x_in_pixels]
+
+	; koryguj wskaźnik pozycji bitu w matrycy linii znaku
+	dec	rcx
+
+.compressed_check_pixel:
+	; sprawdź czy bit zapalony
+	bt	word [rsi],	cx
+	jnc	.compressed_background	; nie, tło
+
+	; wyświetl piksel o sprecyzowanym kolorze
+	mov	rax,	rbx
+	stosd
+
+	; kontynuuj
+	jmp	.compressed_continue_line
+
+.compressed_background:
+	; wyświetl piksel o sprecyzowanym kolorze
+	mov	rax,	rdx
+	stosd
+
+.compressed_continue_line:
+	; następny piksel
+	dec	rcx
+
+	; sprawdź czy koniec bitów dla znaku
+	cmp	rcx,	VARIABLE_FULL
+	jne	.compressed_check_pixel
+
+	; koniec N-tej linii w macierzy znaku?
+	dec	r8
+	jz	.compressed_ready
+
+	; przesuń wskaźnik w przestrzeni pamięci do następnej linii znaku
+
+	; dodaj szerokość rozdzielczości w Bajtach
+	add	rdi,	qword [variable_screen_width_scan_line]
+	; odejmij szerokość WYŚWIETLONEJ linii macierzy znaku w Bajtach
+	sub	rdi,	qword [variable_screen_char_width_in_bytes]
+
+	; przesuń wskaźnik na opis następnej linii
+	inc	rsi
+
+	; następna linia macierzy znaku
+	jmp	.compressed_next_line
+
+.compressed_ready:
+	; przesuń wirtualny kursor o jedną pozycję w prawo
+	inc	dword [variable_screen_cursor]
+
+	; przywróć wskaźnik kursora w przestrzeni ekranu
+	pop	rdi
+
+	; zwróć wskaźnik do pozycji następnego znaku w przestrzeni pamięci
+	add	rdi,	qword [variable_screen_char_width_in_bytes]
+
+	; koniec
+	jmp	.end
+
+;===============================================================================
 
 .graphics_enter:
 	; oblicz pozycję wskaźnika na początku linii znaków

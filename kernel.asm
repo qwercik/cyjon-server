@@ -159,7 +159,7 @@ kernel:
 %include	"library/find_free_bit.asm"
 %include	"library/compare_string.asm"
 
-%include	"font/sinclair.asm"
+%include	"font/terminus-8x16n-compressed.asm"
 
 ; wskaźnik końca kodu jądra wyrównaj do pełnego adresu strony
 align	0x1000

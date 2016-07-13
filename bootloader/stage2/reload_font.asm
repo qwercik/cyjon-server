@@ -20,7 +20,7 @@ stage2_reload_font:
 	mov	bx,	0x1000	; bh, wysokość znaku (16 pikseli)
 	mov	cx,	256	; ilość znaków do załadowania
 	xor	dx,	dx	; rozpocząć od pierwszego
-	mov	bp,	font
+	mov	bp,	matrix_font
 	int	0x10
 
 	; powrót z procedury

@@ -76,7 +76,7 @@ start:
 %include	"bootloader/stage2/gdt_structure.asm"
 %include	"bootloader/stage2/reload_font.asm"
 %include	"bootloader/stage2/change_graphics_mode.asm"
-%include	"bootloader/font/gohuno.asm"
+%include	"font/terminus-8x16n-compressed.asm"
 
 ; rozpocznij kod 32 Bitowy od pełnego adresu
 align	0x04
