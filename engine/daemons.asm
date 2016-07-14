@@ -57,6 +57,10 @@ table_daemon:
 	dq	daemon_garbage_collector
 	dq	variable_daemon_garbage_collector_name
 
+	dq	VARIABLE_DAEMON_NETWORK_LOOPBACK_NAME_COUNT
+	dq	daemon_network_loopback
+	dq	variable_daemon_network_loopback_name
+
 	dq	VARIABLE_DAEMON_ETHERNET_NAME_COUNT
 	dq	daemon_ethernet
 	dq	variable_daemon_ethernet_name

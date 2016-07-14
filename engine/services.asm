@@ -43,6 +43,12 @@ irq64:
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_NETWORK
 	je	.network
 
+
+
+	; obsługa ekranu w trybie graficznym?
+	cmp	ah,	VARIABLE_KERNEL_SERVICE_VIDEO
+	je	.video
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -154,6 +160,14 @@ irq64:
 	; wyślij dane na podstawie identyfikatora połączenia?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_SEND
 	je	irq64_network_send
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+.video:
+	; pobierz właściwości pamięci?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_SCREEN_CLEAR
+	je	irq64_video_screen_clear
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -931,6 +945,29 @@ irq64_network_send:
 	pop	rdi
 	pop	rsi
 	pop	rbx
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;===============================================================================
+;===============================================================================
+irq64_video_screen_clear:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rcx
+	push	rdi
+
+	; wyczyść ekran na rządany kolor
+	mov	rax,	rdx
+	mov	rcx,	qword [variable_screen_size]
+	shr	rcx,	VARIABLE_DIVIDE_BY_4
+	mov	rdi,	qword [variable_screen_base_address]
+	rep	stosd
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rcx
+	pop	rax
 
 	; koniec obsługi przerwania programowego
 	iretq

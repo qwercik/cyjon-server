@@ -144,6 +144,7 @@ kernel:
 %include	"engine/daemon/daemon_garbage_collector.asm"
 %include	"engine/daemon/daemon_ethernet.asm"
 %include	"engine/daemon/daemon_tcp_ip_stack.asm"
+%include	"engine/daemon/daemon_network_loopback.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/network/i8254x.asm"
