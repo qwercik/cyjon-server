@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		login
-%define	VARIABLE_PROGRAM_VERSION	"v0.1"
+%define	VARIABLE_PROGRAM_VERSION	"v0.2"
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -47,8 +47,13 @@ start:
 	mov	rsi,	text_password	; wskaźnik do ciągu znaków zakończony terminatorem lub licznikiem
 	int	STATIC_KERNEL_SERVICE
 
+	; wyłącz kursor
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_HIDE
+	int	STATIC_KERNEL_SERVICE
+
 	; pobierz od użytkownika ciąg znaków
-	mov	rbx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
+	mov	rbx,	VARIABLE_COLOR_BACKGROUND_DEFAULT	; nie pokazuj hasła
 	mov	rcx,	16	; ilość pobieranych znaków
 	mov	rdi,	text_password_cache	; gdzie przechować pobrane znaki
 	call	library_input
@@ -56,6 +61,10 @@ start:
 	; przesuń kursor na początek linii
 	mov	rcx,	VARIABLE_FULL	; wszystkie znaki z ciągu
 	mov	rsi,	text_space	; wskaźnik do ciągu znaków zakończony terminatorem lub licznikiem
+	int	STATIC_KERNEL_SERVICE
+
+	; włącz kursor
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SHOW
 	int	STATIC_KERNEL_SERVICE
 
 	; zakończ działanie procesu/programu

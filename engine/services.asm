@@ -107,6 +107,14 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
 	je	irq64_screen_cursor_set
 
+	; ukryć kursor?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_HIDE
+	je	irq64_screen_cursor_hide
+
+	; pokazać kursor?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SHOW
+	je	irq64_screen_cursor_show
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -718,6 +726,20 @@ irq64_screen_cursor_set:
 
 	; koniec
 	jmp	.end
+
+;-------------------------------------------------------------------------------
+irq64_screen_cursor_hide:
+	call	cyjon_screen_cursor_lock
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_screen_cursor_show:
+	call	cyjon_screen_cursor_unlock
+
+	; koniec obsługi przerwania programowego
+	iretq
 
 ;===============================================================================
 ;===============================================================================
