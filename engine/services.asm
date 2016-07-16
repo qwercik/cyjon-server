@@ -169,6 +169,10 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_SCREEN_CLEAR
 	je	irq64_video_screen_clear
 
+	; ustaw piksel o danym kolorze?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_PIXEL_SET
+	je	irq64_video_screen_pixel_set
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -968,6 +972,13 @@ irq64_video_screen_clear:
 	pop	rdi
 	pop	rcx
 	pop	rax
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_video_screen_pixel_set:
+	call	cyjon_screen_pixel_set
 
 	; koniec obsługi przerwania programowego
 	iretq

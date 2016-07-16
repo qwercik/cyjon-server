@@ -1251,6 +1251,40 @@ cyjon_screen_cursor_unlock:
 	; powrót z procedury
 	ret
 
+cyjon_screen_pixel_set:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rcx
+	push	rdx
+	push	rdi
+	push	r8
+
+	; oblicz pozycję piksela w przestrzeni pamięci ekranu
+	mov	rax,	r9	; y
+	xor	rdx,	rdx
+	; * Bajtów na piksel
+	mul	qword [variable_screen_width_scan_line]
+	; * y
+	mov	rcx,	qword [variable_screen_depth]
+	shr	rcx,	VARIABLE_DIVIDE_BY_2
+	shl	r8,	cl
+	add	rax,	r8
+
+	; wskaźnik początku przestrzeni pamięci
+	mov	rdi,	qword [variable_screen_base_address]
+	; wyświetl piksel o podanym kolorze
+	mov	dword [rdi + rax],	ebx
+
+	; przywróć oryginalne rejestry
+	pop	r8
+	pop	rdi
+	pop	rdx
+	pop	rcx
+	pop	rax
+
+	; powrót z proceudry
+	ret
+
 ;===============================================================================
 ; wyświetla ostatni komunikat jądra
 ; IN:

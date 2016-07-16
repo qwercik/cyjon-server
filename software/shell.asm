@@ -40,13 +40,13 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_GET
 	int	STATIC_KERNEL_SERVICE
 
-	; wyłącz kursor
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_HIDE
-	int	STATIC_KERNEL_SERVICE
+	; jeśli kursor znajduje się na początku ekranu, ok
+	cmp	ebx,	VARIABLE_EMPTY
+	jne	.restart	; wyświetl znak zachęty od nowej linii
 
 	; pobierz od użytkownika ciąg znaków
 	mov	rax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
-	mov	rbx,	VARIABLE_COLOR_BACKGROUND_DEFAULT	; nie pokazuj hasła
+	mov	rbx,	VARIABLE_COLOR_LIGHT_RED	; nie pokazuj hasła
 	mov	rcx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_prompt
