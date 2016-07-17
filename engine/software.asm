@@ -56,7 +56,7 @@ move_included_files_to_virtual_filesystem:
 	add	rsi,	rcx
 
 	; kontynuuj z pozostałymi plikami
-	loop	.loop
+	jmp	.loop
 
 .end:
 	; przywróć oryginalne rejestry
