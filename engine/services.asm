@@ -113,6 +113,10 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
 	je	irq64_screen_cursor_set
 
+	; pobrać własności ekranu?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_SIZE
+	je	irq64_screen_size
+
 	; ukryć kursor?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_HIDE
 	je	irq64_screen_cursor_hide
@@ -158,8 +162,8 @@ irq64:
 	je	irq64_network_port_release
 
 	; wyślij dane na podstawie identyfikatora połączenia?
-	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_SEND
-	je	irq64_network_send
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_ANSWER
+	je	irq64_network_answer
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -746,6 +750,17 @@ irq64_screen_cursor_set:
 	jmp	.end
 
 ;-------------------------------------------------------------------------------
+irq64_screen_size:
+	; ilość wierszy w starszej części rejestru
+	mov	rbx,	qword [variable_screen_height_on_chars]
+	shl	rbx,	VARIABLE_MOVE_RAX_DWORD_LEFT
+	; ilość kolumn w młodszej części
+	or	rbx,	qword [variable_screen_width_on_chars]
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
 irq64_screen_cursor_hide:
 	call	cyjon_screen_cursor_lock
 
@@ -894,7 +909,7 @@ irq64_network_port_release:
 	jmp	irq64_process_end.prepared
 
 ;-------------------------------------------------------------------------------
-irq64_network_send:
+irq64_network_answer:
 	; zachowaj oryginalne rejestry
 	push	rbx
 	push	rsi
@@ -902,7 +917,7 @@ irq64_network_send:
 	push	rcx
 
 .restart:
-	; rozmiar bufora wyjściowego sotsu TCP/IP w rekordach
+	; rozmiar bufora wyjściowego stosu TCP/IP w rekordach
 	mov	rcx,	VARIABLE_DAEMON_TCP_IP_STACK_CACHE_SIZE
 
 	; ustaw wskaźnik do bufora wyjściowego stosu TCP/IP
@@ -929,7 +944,7 @@ irq64_network_send:
 	; zablokuj rekord
 	mov	byte [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.flag],	VARIABLE_TRUE
 
-	; załaduj do rekordu rozmiar danycho do wysłania
+	; załaduj do rekordu rozmiar danych do wysłania
 	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE]
 	mov	qword [rdi + STRUCTURE_DAEMON_TCP_IP_STACK_CACHE_OUT.size],	rcx
 

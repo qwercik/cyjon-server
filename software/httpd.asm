@@ -105,7 +105,7 @@ start:
 .send:
 	sub	rdi,	STRUCTURE_CACHE_DEFAULT.data
 	; procedura wysyłania odpowiedzi do sieci
-	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_SEND
+	mov	ax,	VARIABLE_KERNEL_SERVICE_NETWORK_ANSWER
 	; pobierz identyfikator zapytania i zwolnij rekord
 	xor	rbx,	rbx
 	xchg	rbx,	qword [rdi + STRUCTURE_CACHE_DEFAULT.id]
