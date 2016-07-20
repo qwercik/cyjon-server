@@ -38,7 +38,7 @@ _start:
 variable_bootloader_own	db	VARIABLE_EMPTY
 
 ; multiboot zostanie wyłączony na czas konstruowania trybu graficznego
-;%include	"engine/multiboot.asm"
+%include	"engine/multiboot.asm"
 %include	"engine/init.asm"
 
 %include	"bootloader/stage2/paging.asm"

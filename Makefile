@@ -6,6 +6,8 @@ BUILD=build
 SOFTWARE=software
 
 all:
+	$(ASM) $(SOFTWARE)/hello.asm		-o $(BUILD)/hello.bin
+
 	$(ASM) $(SOFTWARE)/init.asm		-o $(BUILD)/init.bin
 	$(ASM) $(SOFTWARE)/login.asm		-o $(BUILD)/login.bin
 	$(ASM) $(SOFTWARE)/shell.asm		-o $(BUILD)/shell.bin
@@ -33,4 +35,5 @@ clean:
 		$(BUILD)/httpd.bin	\
 		$(BUILD)/kill.bin	\
 		$(BUILD)/free.bin	\
-		$(BUILD)/x.bin
+		$(BUILD)/x.bin		\
+		$(BUILD)/hello.bin

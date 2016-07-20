@@ -132,3 +132,6 @@ incbin	"build/stage2.bin"
 
 ; na systemach z rodziny MS/Windows, oprogramowanie Bochs wymaga obrazu dysku o rozmiarze >= 1MiB i wyrównanego do pełnego sektora (512 Bajtów)
 times	512 * 2048 - ( $ - $$ )	db	0x00
+
+; dołącz wirtualną partycję FAT16
+incbin	"build/partition_fat16.raw"
