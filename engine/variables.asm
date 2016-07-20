@@ -14,7 +14,11 @@
 text_arrow_right			db	"-> ", VARIABLE_ASCII_CODE_TERMINATOR
 text_caution				db	"::", VARIABLE_ASCII_CODE_TERMINATOR
 text_colon				db	":", VARIABLE_ASCII_CODE_TERMINATOR
+text_sub				db	"   ", VARIABLE_ASCII_CODE_TERMINATOR
+text_subsub				db	"    ",	VARIABLE_ASCII_CODE_TERMINATOR
 text_paragraph				db	VARIABLE_ASCII_CODE_RETURN
+text_close				db	"]", VARIABLE_ASCII_CODE_TERMINATOR
+text_open				db	"[", VARIABLE_ASCII_CODE_TERMINATOR
 
 text_kib				db	" KiB", VARIABLE_ASCII_CODE_TERMINATOR
 text_mib				db	" MiB", VARIABLE_ASCII_CODE_TERMINATOR
@@ -40,8 +44,8 @@ struc	MMAP_STRUCTURE
 endstruc
 
 variable_idt_structure:
-	.limit		dw	VARIABLE_MEMORY_PAGE_SIZE	; rozmiar tablicy / do 512 rekordów
-	.address	dq	VARIABLE_EMPTY
+	.limit				dw	VARIABLE_MEMORY_PAGE_SIZE	; rozmiar tablicy / do 512 rekordów
+	.address			dq	VARIABLE_EMPTY
 
 ; ilość 0.001 sekundy upłyniętych od inicjalizacji jądra systemu
 variable_system_microtime		dq	VARIABLE_EMPTY

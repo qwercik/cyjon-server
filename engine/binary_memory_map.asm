@@ -163,25 +163,23 @@ binary_memory_map:
 	loop	.disable
 
 	; wyświetl informację o dostępnej ilości pamięci RAM
-	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
+	mov	rbx,	VARIABLE_COLOR_LIGHT_GREEN
 	mov	cl,	VARIABLE_FULL
-	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	mov	rsi,	text_caution
 	call	cyjon_screen_print_string
 
-	mov	bl,	VARIABLE_COLOR_DEFAULT
-	mov	cl,	VARIABLE_FULL
-	mov	dl,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	rsi,	text_binary_memory_map_available_memory
 	call	cyjon_screen_print_string
 
 	mov	rax,	qword [variable_binary_memory_map_total]
 	shl	rax,	VARIABLE_MULTIPLE_BY_4	; KiB
-	mov	bl,	VARIABLE_COLOR_WHITE
+	mov	rbx,	VARIABLE_COLOR_WHITE
 	mov	cx,	VARIABLE_SYSTEM_DECIMAL	; brak cyfr wiodących, system dziesiętny
 	call	cyjon_screen_print_number
 
-	mov	bl,	VARIABLE_COLOR_DEFAULT
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	cl,	VARIABLE_FULL
 	mov	rsi,	text_kib
 	call	cyjon_screen_print_string

@@ -32,6 +32,8 @@ text_vfs_ready					db	" Wirtualny system plikow, gotowy.", VARIABLE_ASCII_CODE_R
 text_vfs_fail					db	"VFS: Nie mozna zainicjalizowac systemu plikow.", VARIABLE_PANIC
 text_vfs_no_memory				db	"VFS: Brak wystarczajacej ilosci pamieci.", VARIABLE_PANIC
 text_nic_i8254x					db	" Kontroler sieci Intel 82540EM, MAC ", VARIABLE_ASCII_CODE_TERMINATOR
+text_ide_found					db	" Znaleziono dyski ATA:", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
+text_ide_serial					db	", numer seryjny ", VARIABLE_ASCII_CODE_TERMINATOR
 
 ; błędy procesów
 text_process_prohibited_operation		db	"Niedozwolona operacja, proces zniszczony.", VARIABLE_ASCII_CODE_RETURN

@@ -102,6 +102,9 @@ kernel:
 	; załaduj podstawową macierz znaków klawiatury
 	call	keyboard
 
+	; wykryj dostępne nośniki ATA (tylko dyski twarde)
+	call	ide_initialize
+
 	; włączamy przerwania i wyjątki procesora
 	sti	; tchnij życie
 
@@ -147,6 +150,7 @@ kernel:
 %include	"engine/daemon/daemon_network_loopback.asm"
 
 %include	"engine/drivers/pci.asm"
+%include	"engine/drivers/ide.asm"
 %include	"engine/drivers/network/i8254x.asm"
 
 ; wczytaj lokalizacje jądra systemu
@@ -159,6 +163,7 @@ kernel:
 %include	"library/align_address_up_to_page.asm"
 %include	"library/find_free_bit.asm"
 %include	"library/compare_string.asm"
+%include	"library/trim.asm"
 
 %include	"font/terminus-8x16n-compressed.asm"
 
