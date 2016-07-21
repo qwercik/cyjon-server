@@ -34,7 +34,10 @@ text_vfs_fail					db	"VFS: Can't initialize file system.", VARIABLE_PANIC
 text_vfs_no_memory				db	"VFS: There is not enough memory.", VARIABLE_PANIC
 text_nic_i8254x					db	" Network controller Intel 82540EM, MAC ", VARIABLE_ASCII_CODE_TERMINATOR
 text_ide_found					db	" Found ATA drives:", VARIABLE_ASCII_CODE_ENTER, VARIABLE_ASCII_CODE_NEWLINE, VARIABLE_ASCII_CODE_TERMINATOR
-text_ide_serial					db	", serial number ", VARIABLE_ASCII_CODE_TERMINATOR
+text_ide_serial					db	", sn: ", VARIABLE_ASCII_CODE_TERMINATOR
+text_ide_size					db	", size ", VARIABLE_ASCII_CODE_TERMINATOR
+
+text_bytes					db	" Bytes", VARIABLE_ASCII_CODE_TERMINATOR
 
 ; błędy procesów
 text_process_prohibited_operation		db	"Prohibited operation, process destroyed.", VARIABLE_ASCII_CODE_RETURN

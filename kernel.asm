@@ -148,6 +148,7 @@ kernel:
 %include	"engine/daemon/daemon_ethernet.asm"
 %include	"engine/daemon/daemon_tcp_ip_stack.asm"
 %include	"engine/daemon/daemon_network_loopback.asm"
+%include	"engine/daemon/daemon_ide_io.asm"
 
 %include	"engine/drivers/pci.asm"
 %include	"engine/drivers/ide.asm"
@@ -164,6 +165,7 @@ kernel:
 %include	"library/find_free_bit.asm"
 %include	"library/compare_string.asm"
 %include	"library/trim.asm"
+%include	"library/translate_size_and_type.asm"
 
 %include	"font/terminus-8x16n-compressed.asm"
 

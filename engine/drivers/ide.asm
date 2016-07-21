@@ -46,7 +46,7 @@ VARIABLE_IDE_REGISTER_CONTROL_HOB		equ	10000000b
 
 table_ide:
 	dw	0x01F0	; primary
-	; blokuję drugi kontroler, Qemu ma jakiś problem z sobą
+	; blokuję drugi kontroler, Qemu ma jakiś problem z samym sobą
 	; Bochs działa od strzału...
 	; zablokowałem też drugie urządzenie na pierwszym kontrolerze
 	; debug
@@ -56,14 +56,36 @@ table_ide:
 variable_ide_disks				dq	VARIABLE_EMPTY
 
 struc	STRUCTURE_IDE_DISK
-	.controller	resw	1
-	.device		resb	1
-	.something0	resb	20
-	.serial		resb	20
-	.something1	resb	14
-	.name		resb	40
-	.something2	resb	256 - 20 - 20 - 14 - 40
-	.SIZE		resb	1
+	.controller		resb	2
+	.device			resb	1
+	.type			resb	2
+	.cylinders		resb	2
+	.reserved0		resb	2
+	.heads			resb	2
+	.special0		resb	4
+	.sectors		resb	2
+	.vendor_unique_0	resb	6
+	.serial			resb	20
+	.buffer_type		resb	2
+	.buffer_size		resb	2
+	.ecc			resb	2
+	.revision		resb	8
+	.model			resb	40
+	.vendor_unique_1	resb	2
+	.doubleword		resb	2
+	.capabilities		resb	2
+	.reserved_0		resb	2
+	.pio_timing_mode	resb	2
+	.dma_timing_mode	resb	2
+	.current_valid		resb	2
+	.cylinders_current	resb	2
+	.heads_current		resb	2
+	.sectors_current	resb	2
+	.capacity_current	resb	4
+	.reserved_2		resb	2
+	.capacity_lba		resb	4
+	.other			resb	256 - STRUCTURE_IDE_DISK.capacity_lba
+	.SIZE			resb	1
 endstruc
 
 variable_ide0					db	"IDE0 ", VARIABLE_ASCII_CODE_TERMINATOR
@@ -83,12 +105,13 @@ ide_initialize:
 	push	rsi
 	push	rdi
 
+.wait:
 	; przydziel przestrzeń pod specyfikacje dostępnych nośników
 	call	cyjon_page_allocate
 
 	; czekaj na przydzielenie przestrzeni
 	cmp	rdi,	VARIABLE_EMPTY
-	je	ide_initialize
+	je	.wait
 
 	; zapisz
 	mov	qword [variable_ide_disks],	rdi
@@ -250,8 +273,8 @@ ide_decode:
 	je	.end
 
 	; dekoduj nazwę nośnika
-	mov	rcx,	( STRUCTURE_IDE_DISK.something2 - STRUCTURE_IDE_DISK.name ) / VARIABLE_WORD_SIZE
-	add	rsi,	STRUCTURE_IDE_DISK.name
+	mov	rcx,	( STRUCTURE_IDE_DISK.vendor_unique_1 - STRUCTURE_IDE_DISK.model ) / VARIABLE_WORD_SIZE
+	add	rsi,	STRUCTURE_IDE_DISK.model
 
 .loop_name:
 	; pobierz dwa znaki z nazwy nośnika
@@ -267,8 +290,8 @@ ide_decode:
 	loop	.loop_name
 
 	; dekoduj numer seryjny nośnika
-	mov	rcx,	( STRUCTURE_IDE_DISK.something1 - STRUCTURE_IDE_DISK.serial ) / VARIABLE_WORD_SIZE
-	sub	rsi,	STRUCTURE_IDE_DISK.something2
+	mov	rcx,	( STRUCTURE_IDE_DISK.buffer_type - STRUCTURE_IDE_DISK.serial ) / VARIABLE_WORD_SIZE
+	sub	rsi,	STRUCTURE_IDE_DISK.vendor_unique_1
 	add	rsi,	STRUCTURE_IDE_DISK.serial
 
 .loop_serial:
@@ -285,7 +308,7 @@ ide_decode:
 	loop	.loop_serial
 
 	; następny rekord
-	sub	rsi,	STRUCTURE_IDE_DISK.something1
+	sub	rsi,	STRUCTURE_IDE_DISK.buffer_type
 	add	rsi,	STRUCTURE_IDE_DISK.SIZE
 
 	; kontynuuj
@@ -347,9 +370,9 @@ ide_show_devices:
 
 	; wyświetl nazwę nośnika ---------------------------------------
 	mov	rbx,	VARIABLE_COLOR_WHITE
-	mov	rcx,	STRUCTURE_IDE_DISK.something2 - STRUCTURE_IDE_DISK.name
+	mov	rcx,	STRUCTURE_IDE_DISK.vendor_unique_1 - STRUCTURE_IDE_DISK.model
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	add	rdi,	STRUCTURE_IDE_DISK.name
+	add	rdi,	STRUCTURE_IDE_DISK.model
 	call	library_trim
 	mov	rsi,	rdi
 	call	cyjon_screen_print_string
@@ -365,10 +388,44 @@ ide_show_devices:
 
 	; numer seryjny nośnika ----------------------------------------
 	mov	rbx,	VARIABLE_COLOR_WHITE
-	mov	rcx,	STRUCTURE_IDE_DISK.something1 - STRUCTURE_IDE_DISK.serial
+	mov	rcx,	STRUCTURE_IDE_DISK.buffer_type - STRUCTURE_IDE_DISK.serial
 	add	rdi,	STRUCTURE_IDE_DISK.serial
 	call	library_trim
 	mov	rsi,	rdi
+	call	cyjon_screen_print_string
+
+	; wyświetl rozmiar nośnika
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
+	mov	cl,	VARIABLE_FULL
+	mov	rsi,	text_ide_size
+	call	cyjon_screen_print_string
+
+	; przywróć wskaźnik
+	mov	rdi,	qword [rsp]
+
+	; pobierz rozmiar w sektorach z pola LBA
+	mov	eax,	dword [rdi + STRUCTURE_IDE_DISK.capacity_lba]
+	cmp	eax,	VARIABLE_EMPTY	; brak wsparcia dla LBA?
+	ja	.size_type
+
+	; pobierz rozmiar w sektorach z pola CHS
+	mov	eax,	dword [rdi + STRUCTURE_IDE_DISK.capacity_current]
+
+.size_type:
+	; usuń informacje o sektorach
+	shl	rax,	VARIABLE_MULTIPLE_BY_512
+
+	; zamień na formę skróconą
+	call	library_translate_size_and_type
+
+	; rozmiar nośnika ----------------------------------------------
+	mov	rbx,	VARIABLE_COLOR_WHITE
+	mov	cx,	VARIABLE_SYSTEM_DECIMAL
+	call	cyjon_screen_print_number
+
+	; wyświetl typ rozmiaru
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
+	mov	rcx,	VARIABLE_FULL
 	call	cyjon_screen_print_string
 
 	; przesuń kursor do nowej linii

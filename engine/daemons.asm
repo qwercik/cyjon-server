@@ -69,5 +69,9 @@ table_daemon:
 	dq	daemon_tcp_ip_stack
 	dq	variable_daemon_tcp_ip_stack_name
 
+	dq	VARIABLE_DAEMON_IDE_IO_NAME_COUNT
+	dq	daemon_ide_io
+	dq	variable_daemon_ide_io_name
+
 	; koniec rekordów
 	dq	VARIABLE_EMPTY
