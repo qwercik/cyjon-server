@@ -49,6 +49,10 @@ irq64:
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_VIDEO
 	je	.video
 
+	; obsługa nośników danych?
+	cmp	ah,	VARIABLE_KERNEL_SERVICE_DRIVE
+	je	.drive
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -176,6 +180,14 @@ irq64:
 	; ustaw piksel o danym kolorze?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_PIXEL_SET
 	je	irq64_video_screen_pixel_set
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+.drive:
+	; pobrać listę dostępnych nośników?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_DRIVE_LIST
+	je	irq64_drive_list
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -995,5 +1007,11 @@ irq64_video_screen_clear:
 irq64_video_screen_pixel_set:
 	call	cyjon_screen_pixel_set
 
+	; koniec obsługi przerwania programowego
+	iretq
+
+;===============================================================================
+;===============================================================================
+irq64_drive_list:
 	; koniec obsługi przerwania programowego
 	iretq

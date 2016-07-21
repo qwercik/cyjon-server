@@ -16,7 +16,7 @@ variable_daemon_ide_io_name			db	"ide io"
 
 variable_daemon_ide_io_semaphore		db	VARIABLE_FALSE
 
-VARIABLE_DAEMON_IDE_IO_CACHE_SIZE		dq	1
+VARIABLE_DAEMON_IDE_IO_CACHE_SIZE		equ	1
 VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_FREE	equ	VARIABLE_EMPTY
 VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_RESERVED	equ	0x01
 VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_PREPARED	equ	0x02
@@ -65,6 +65,27 @@ daemon_ide_io:
 	; demon ethernet gotowy
 	mov	byte [variable_daemon_ide_io_semaphore],	VARIABLE_TRUE
 
+.restart:
+	; ilość rekordów
+	mov	rcx,	VARIABLE_DAEMON_IDE_IO_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_DAEMON_IDE_IO_CACHE.SIZE
+
 .find_request:
-	
+	; sprawdź rekord
+	cmp	byte [rdi],	VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_PREPARED
+	je	.found
+
+	; przesuń wskaźnik na następny rekord
+	add	rdi,	STRUCTURE_DAEMON_IDE_IO_CACHE.SIZE
+	loop	.find_request
+
+	; brak poleceń w buforze, szukaj od początku
+	mov	rdi,	qword [variable_daemon_ide_io_cache]
+
+	; kontynuuj
+	jmp	.restart
+
+.found:
+	; debug
+	xchg	bx,bx
+
 	jmp	$
