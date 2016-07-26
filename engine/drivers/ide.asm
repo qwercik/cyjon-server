@@ -26,6 +26,9 @@ VARIABLE_IDE_REGISTER_LBA_LOW			equ	0x03
 VARIABLE_IDE_REGISTER_LBA_MIDDLE		equ	0x04
 VARIABLE_IDE_REGISTER_LBA_HIGH			equ	0x05
 VARIABLE_IDE_REGISTER_DRIVE			equ	0x06
+VARIABLE_IDE_REGISTER_DRIVE_MASTER		equ	10100000b
+VARIABLE_IDE_REGISTER_DRIVE_SLAVE		equ	10110000b
+VARIABLE_IDE_REGISTER_DRIVE_LBA			equ	11100000b
 VARIABLE_IDE_REGISTER_STATUS			equ	0x07
 VARIABLE_IDE_REGISTER_STATUS_BIT_ERR		equ	0
 VARIABLE_IDE_REGISTER_STATUS_BIT_DRQ		equ	3
@@ -53,6 +56,7 @@ table_ide:
 	;dw	0x0170	; secondary
 	dw	VARIABLE_EMPTY
 
+variable_ide_sector_size			dq	512	; Bajtów
 variable_ide_disks				dq	VARIABLE_EMPTY
 
 struc	STRUCTURE_IDE_DISK
@@ -251,7 +255,8 @@ ide_wait:
 	push	rax
 	push	rdx
 
-	mov	rdx,	VARIABLE_IDE_PRIMARY + VARIABLE_IDE_REGISTER_ALTERNATE
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]
+	add	dx,	VARIABLE_IDE_REGISTER_ALTERNATE
 	in	al,	dx
 
 	; przywróć oryginalne rejestry
@@ -443,5 +448,199 @@ ide_show_devices:
 	jmp	.loop
 
 .end:
+	; powrót z procedury
+	ret
+
+; rax - lba
+; rcx - ilość sektorów
+; rsi - wskaźnik do opisu struktury nośnika
+; rdi - gdzie zapisać
+ide_read_sectors:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rdx
+	push	rdi
+	push	rax
+
+	; post statusu urządzenia
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]
+	add	dx,	VARIABLE_IDE_REGISTER_STATUS
+
+.wait:
+	; pobierz status urządzenia
+	in	al,	dx
+
+	; czy urządzenie jest zajęte przetwarzaniem polecenia?
+	bt	ax,	VARIABLE_IDE_REGISTER_STATUS_BIT_BSY
+	jc	.wait
+
+	; wybierz nośnik z kontrolera
+	movzx	ax,	byte [rsi + STRUCTURE_IDE_DISK.device]
+
+	; tryb LBA
+	or	ax,	VARIABLE_IDE_REGISTER_DRIVE_LBA
+
+	; przygotuj nośnik
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]
+	add	dx,	VARIABLE_IDE_REGISTER_DRIVE
+	out	dx,	al
+
+	pop	rax
+
+	; ustaw pozycje sektora w trybie LBA
+	call	ide_lba
+
+	; poinformuj nośnik o odczycie
+	mov	al,	VARIABLE_IDE_REGISTER_COMMAND_READ_PIO_EXT
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]
+	add	dx,	VARIABLE_IDE_REGISTER_COMMAND
+	out	dx,	al
+
+.read:
+	; czekaj na gotowość nośnika
+	call	ide_pool
+	cmp	al,	VARIABLE_EMPTY
+	je	.ok
+
+	; wystąpił błąd urządzenia
+	jmp	$
+
+.ok:
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]
+	add	dx,	VARIABLE_IDE_REGISTER_DATA
+
+	push	rcx
+
+	mov	rcx,	256
+	rep	insw
+
+	pop	rcx
+
+	sub	rcx,	VARIABLE_DECREMENT
+	jnz	.read
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rdx
+	pop	rcx
+	pop	rbx
+	pop	rax
+
+	; powrót z procedury
+	ret
+
+ide_pool:
+	push	rcx
+	push	rdx
+
+	; czekaj na nośnik 400ns
+	call	ide_wait
+
+	; status nośnika
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]
+	add	dx,	VARIABLE_IDE_REGISTER_ALTERNATE
+
+.bsy_bit:
+	; pobierz status urządzenia
+	in	al,	dx
+
+	; urządzenie jest zajęte przetwarzaniem polecenia?
+	bt	ax,	VARIABLE_IDE_REGISTER_STATUS_BIT_BSY
+	jc	.bsy_bit
+
+	; pobierz status urządzenia
+	in	al,	dx
+
+	; brak błędów?
+	bt	ax,	VARIABLE_IDE_REGISTER_STATUS_BIT_ERR
+	jnc	.no_err
+
+	; błąd
+	mov	ax,	2
+
+	jmp	.end
+
+.no_err:
+	bt	ax,	VARIABLE_IDE_REGISTER_STATUS_BIT_DF
+	jnc	.no_df
+
+	; błąd urządzenia
+	mov	al,	1
+
+	jmp	.end
+
+.no_df:
+	bt	ax,	VARIABLE_IDE_REGISTER_STATUS_BIT_DRQ
+	jc	.ok
+
+	; błąd - brak danych do przesłania
+	mov	al,	3
+
+	jmp	.end
+
+.ok:
+	xor	al,	al
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rdx
+	pop	rcx
+
+	; powrót z procedury
+	ret
+
+ide_lba:
+	; zachowaj
+	mov	rbx,	rax
+
+	; starsza część ilości odczytywanych sektorów
+	mov	dx,	word [rsi + STRUCTURE_IDE_DISK.controller]	
+	add	dx,	VARIABLE_IDE_REGISTER_COUNTER
+	mov	al,	VARIABLE_EMPTY
+	out	dx,	al
+
+	; wyślij 48 bitowy numer sektora
+
+	; al = 31..24
+	inc	dx	; VARIABLE_IDE_REGISTER_LBA_LOW
+	mov	rax,	rbx
+	shr	rax,	24
+	out	dx,	al
+
+	; al = 39..32
+	inc	dx	; VARIABLE_IDE_REGISTER_LBA_MIDDLE
+	mov	rax,	rbx
+	shr	rax,	VARIABLE_MOVE_HIGH_RAX_TO_EAX
+	out	dx,	al
+
+	; al = 47..40
+	inc	dx,	; VARIABLE_IDE_REGISTER_LBA_HIGH
+	mov	rax,	rbx
+	shr	rax,	40
+	out	dx,	al
+
+	; młodsza część ilości odczytywanych sektorów
+	sub	dx,	0x03	; VARIABLE_IDE_REGISTER_COUNTER
+	mov	al,	cl
+	out	dx,	al
+
+	; al = 7..0
+	inc	dx	; VARIABLE_IDE_REGISTER_LBA_LOW
+	mov	rax,	rbx
+	out	dx,	al
+
+	; al = 15..8
+	inc	dx	; VARIABLE_IDE_REGISTER_LBA_MIDDL
+	mov	al,	bh
+	out	dx,	al
+
+	; al = 23..16
+	inc	dx,	; VARIABLE_IDE_REGISTER_LBA_HIGH
+	mov	rax,	rbx
+	shr	rax,	VARIABLE_MOVE_HIGH_EAX_TO_AX
+	out	dx,	al
+
 	; powrót z procedury
 	ret

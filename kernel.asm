@@ -109,7 +109,7 @@ kernel:
 	sti	; tchnij życie
 
 	; przygotuj wirtualny system plików na programy wbudowane
-	call	virtual_file_system
+	call	vfs
 
 	; inicjalizuj pierwszą dostępną kartę sieciową
 	call	network_init

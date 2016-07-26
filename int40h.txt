@@ -189,3 +189,18 @@ ah 0x06 - obsługa trybu graficznego
 					0xFFFFFF - biały
 		WYJŚCIE:
 			brak
+
+ah 0x07	- obsługa nośników danych
+	al 0x00	- pobierz tablicę dostępnych nośników
+		WEJŚCIE:
+			rdi - gdzie zapisać pobraną listę
+				adres wyrównany do pełnej ramki tj. 0xF000
+		Wyjście:
+			rdi - jeśli ZERO, błąd adresu w RDI
+	al 0x01	- odczytaj sektor z nośnika
+		WEJŚCIE:
+			rbx - identyfikator nośnika z którego odczytać sektor
+			rcx - numer sektora w postaci LBA
+			rdi - gdzie zapisać odczytany sektor
+		WYJŚCIE:
+			rdi - jeśli ZERO, nie udało się odczytać sektora

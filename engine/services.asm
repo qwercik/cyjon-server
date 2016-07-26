@@ -43,7 +43,9 @@ irq64:
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_NETWORK
 	je	.network
 
-
+	; obsługa wirtualnego systemu plików?
+	cmp	ah,	VARIABLE_KERNEL_SERVICE_VFS
+	je	.vfs
 
 	; obsługa ekranu w trybie graficznym?
 	cmp	ah,	VARIABLE_KERNEL_SERVICE_VIDEO
@@ -172,6 +174,10 @@ irq64:
 	; koniec obsługi przerwania programowego
 	iretq
 
+.vfs:
+	; koniec obsługi przerwania programowego
+	iretq
+
 .video:
 	; pobierz właściwości pamięci?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_SCREEN_CLEAR
@@ -188,6 +194,10 @@ irq64:
 	; pobrać listę dostępnych nośników?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_DRIVE_LIST
 	je	irq64_drive_list
+
+	; odczytać sektor z nośnika?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_DRIVE_SECTOR_READ
+	je	irq64_drive_sector_read
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -1013,5 +1023,139 @@ irq64_video_screen_pixel_set:
 ;===============================================================================
 ;===============================================================================
 irq64_drive_list:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rsi
+	push	rdi
+
+	; sprawdź czy proces prosi o utworzenie tablicy w miejscu dozwolonym
+	mov	rax,	VARIABLE_MEMORY_HIGH_REAL_ADDRESS
+	cmp	rdi,	rax
+	jb	.error
+
+	; wyrównaj adres do pełnej strony
+	and	di,	VARIABLE_MEMORY_PAGE_ALIGN
+	cmp	rdi,	qword [rsp]
+	je	.aligned
+
+	; przesuń wskaźnik na następną stronę
+	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
+
+	; aktualizuj adres na stosie
+	mov	qword [rsp],	rdi
+
+.aligned:
+	; obsługa tylko dysków ATA, rozmiar maksymalny 4 KiB
+	mov	rcx,	1	; przyznaj rozmiar 4 KiB
+
+	; przygotuj miejsce pod tablicę w przestrzeni porocesu
+	mov	rax,	VARIABLE_MEMORY_HIGH_ADDRESS
+	sub	rdi,	rax
+	mov	rax,	rdi	; ustaw na swoje miejsce - rax => adres
+	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
+	mov	r11,	cr3
+	call	cyjon_page_map_logical_area
+
+	; kopiuj tablicę dostępnych dysków
+	mov	rcx,	STRUCTURE_IDE_DISK * 4	; * maksymalna ilość dysków ATA
+	mov	rsi,	variable_ide_disks
+	rep	movsb
+
+	; koniec
+	jmp	.end
+
+.error:
+	; błędny wskaźnik adresu do przechowania tablicy dysków
+	mov	qword [rsp],	VARIABLE_EMPTY
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rsi
+	pop	rcx
+	pop	rbx
+	pop	rax
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_drive_sector_read:
+	; zachowaj oryginalne rejestry
+	push	rcx
+	push	rsi
+	push	rdi
+
+.daemon:
+	; szukaj wolnego miejsca w buforze
+	mov	rsi,	qword [variable_daemon_ide_io_cache]
+	cmp	rsi,	VARIABLE_EMPTY
+	je	.daemon	; bufor nie gotowy
+
+.restart:
+	; ilość możliwych rekordów w buforze
+	mov	rcx,	VARIABLE_DAEMON_IDE_IO_CACHE_SIZE * VARIABLE_MEMORY_PAGE_SIZE / STRUCTURE_DAEMON_IDE_IO_CACHE.SIZE
+
+.search:
+	; sprawdź rekord
+	cmp	byte [rsi],	VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_FREE
+	je	.found
+
+	; przesuń wskaźnik na następny rekord
+	add	rsi,	STRUCTURE_DAEMON_IDE_IO_CACHE.SIZE
+	loop	.search
+
+	; brak wolnych poleceń w buforze, szukaj od początku
+	mov	rsi,	qword [variable_daemon_ide_io_cache]
+
+	; kontynuuj
+	jmp	.restart
+
+.found:
+	; zachowaj wskaźnik rekordu i licznik
+	push	rcx
+	push	rdi
+
+	; zarezerwuj dostęp do rekordu
+	mov	byte [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.status], VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_RESERVED
+
+	; ustaw nośnik do odczytu
+	mov	byte [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.device],	bl
+	; ustaw numer sektora do odczytu
+	mov	rcx,	qword [rsp + VARIABLE_QWORD_SIZE * 0x04]
+	mov	qword [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.lba],	rcx
+	; wyczyść kod błedu
+	mov	byte [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.error],	VARIABLE_EMPTY
+
+	; pobierz numer PID procesu wykonującego akcje odczytu z nośnika
+	mov	rcx,	qword [variable_multitasking_serpentine_record_active_address]
+	mov	rcx,	qword [rsi + VARIABLE_TABLE_SERPENTINE_RECORD.PID]
+	; ustaw numer PID procesu
+	mov	qword [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.pid],	rcx
+
+	; rekord przygotowany wywołaj operację
+	mov	byte [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.status],	VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_PREPARED
+
+.wait:
+	; zwolnij procesor
+	hlt
+
+	; czekaj na odpowiedź
+	cmp	byte [rsi + STRUCTURE_DAEMON_IDE_IO_CACHE.status],	VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_READY
+	jne	.wait
+
+	; przesuń wskaźnik na dane odpowiedzi
+	add	rsi,	STRUCTURE_DAEMON_IDE_IO_CACHE.data
+	mov	rcx,	qword [variable_ide_sector_size]
+	; skopiuj odpowiedź do procesu
+	rep	movsb
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rsi
+	pop	rcx
+
 	; koniec obsługi przerwania programowego
 	iretq

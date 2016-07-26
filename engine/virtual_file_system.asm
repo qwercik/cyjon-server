@@ -12,7 +12,7 @@
 ; nasm - http://www.nasm.us/
 
 ; struktura SuperBloku wirtualnego systemu plików jądra systemu
-struc virtual_file_system_superblock
+struc STRUCTURE_VFS_SUPERBLOCK
 	.s_all_blocks_count	resq	1
 	.s_fs_blocks_count	resq	1
 
@@ -21,7 +21,7 @@ struc virtual_file_system_superblock
 endstruc
 
 ; SuperBlok
-variable_virtual_file_system_superblock	times	4	dq	VARIABLE_EMPTY
+variable_vfs_superblock	times	4	dq	VARIABLE_EMPTY
 
 ; 64 bitowy kod programu
 [BITS 64]
@@ -34,7 +34,7 @@ variable_virtual_file_system_superblock	times	4	dq	VARIABLE_EMPTY
 ;	brak
 ;
 ; wszystkie rejestry zachowane
-virtual_file_system:
+vfs:
 	; zachowaj oryginalne rejestry
 	push	rbx
 	push	rcx
@@ -56,16 +56,16 @@ virtual_file_system:
 	call	cyjon_page_clear
 
 	; aktualny rozmiar nośnika w blokach
-	mov	qword [variable_virtual_file_system_superblock],	1	; tablica supłów
+	mov	qword [variable_vfs_superblock],	1	; tablica supłów
 
 	; rozmair systemu plików w blokach
-	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_fs_blocks_count],	1
+	mov	qword [variable_vfs_superblock + STRUCTURE_VFS_SUPERBLOCK.s_fs_blocks_count],	1
 
 	; zapisz adres tablicy supłów
-	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table],	rdi
+	mov	qword [variable_vfs_superblock + STRUCTURE_VFS_SUPERBLOCK.s_knots_table],	rdi
 
 	; rozmiar tablicy supłów w blokach
-	mov	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table_size],	1
+	mov	qword [variable_vfs_superblock + STRUCTURE_VFS_SUPERBLOCK.s_knots_table_size],	1
 
 	; wyświetl informację o utworzeniu wirtualnego systemu plików
 	mov	bl,	VARIABLE_COLOR_LIGHT_GREEN
@@ -276,7 +276,7 @@ cyjon_virtual_file_system_find_free_knot:
 	push	rcx
 
 	; załaduj adres poczatku tablicy supłów
-	mov	rdi,	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table]
+	mov	rdi,	qword [variable_vfs_superblock + STRUCTURE_VFS_SUPERBLOCK.s_knots_table]
 
 .prepare:
 	; ilość rekordów na blok
@@ -397,7 +397,7 @@ cyjon_virtual_file_system_find_file:
 	; wyzeruj numer rekordu
 
 	; załaduj adres poczatku tablicy supłów
-	mov	rdi,	qword [variable_virtual_file_system_superblock + virtual_file_system_superblock.s_knots_table]
+	mov	rdi,	qword [variable_vfs_superblock + STRUCTURE_VFS_SUPERBLOCK.s_knots_table]
 
 .prepare:
 	; ilość rekordów na blok

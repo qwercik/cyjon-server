@@ -85,7 +85,42 @@ daemon_ide_io:
 	jmp	.restart
 
 .found:
-	; debug
-	xchg	bx,bx
+	; zachowaj wskaźnik polecenia i licznik
+	push	rcx
+	push	rdi
 
-	jmp	$
+	; tablica dysków
+	mov	rsi,	qword [variable_ide_disks]
+
+	; rozmiar rekordu w tablicy dysków
+	mov	rax,	STRUCTURE_IDE_DISK.SIZE
+	xor	rdx,	rdx	; wyczyść starszą część
+	mul	rbx
+
+	; przesuń wskaźnik na rządany nośnik
+	add	rsi,	rax
+
+	; ustaw numer sektora do odczytania
+	mov	rax,	qword [rdi + STRUCTURE_DAEMON_IDE_IO_CACHE.lba]
+
+	; ilość sektorów do odczytania
+	mov	rcx,	1
+
+	; przesuń wskaźnik na miejsce docelowe odczytanego sektora
+	add	rdi,	STRUCTURE_DAEMON_IDE_IO_CACHE.data
+
+	; wykonaj polecenie
+	call	ide_read_sectors
+
+	; przesuń wskaźnik na początek polecenia
+	sub	rdi,	STRUCTURE_DAEMON_IDE_IO_CACHE.data
+
+	; oznacz polecenie jako wykonane
+	mov	byte [rdi + STRUCTURE_DAEMON_IDE_IO_CACHE.status],	VARIABLE_DAEMON_IDE_IO_CACHE_STATUS_READY
+
+	; koniec obśługi polecenia
+	pop	rdi
+	pop	rcx
+
+	; kontynuuj wykonywanie pozostałych poleceń
+	jmp	.find_request
