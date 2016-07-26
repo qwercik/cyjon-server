@@ -175,6 +175,10 @@ irq64:
 	iretq
 
 .vfs:
+	; odczytać katalog główny wirtualnego systemu plików?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VFS_DIR_ROOT
+	je	irq64_vfs_dir_root
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -986,6 +990,91 @@ irq64_network_answer:
 	pop	rdi
 	pop	rsi
 	pop	rbx
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;===============================================================================
+;===============================================================================
+irq64_vfs_dir_root:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rsi
+	push	rdi
+	push	r11
+
+	; sprawdź czy proces prosi o załadowanie zawartości katalogu głównego w dozwolone miejsce
+	mov	rax,	VARIABLE_MEMORY_HIGH_REAL_ADDRESS
+	cmp	rdi,	rax
+	jb	.error
+
+	; wyrównaj adres do pełnej strony
+	and	di,	VARIABLE_MEMORY_PAGE_ALIGN
+	cmp	rdi,	qword [rsp]
+	je	.aligned
+
+	; przesuń wskaźnik na następną stronę
+	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
+
+	; aktualizuj adres na stosie
+	mov	qword [rsp + VARIABLE_QWORD_SIZE],	rdi
+
+.aligned:
+	; pobierz pozycję surperbloku wirtualnego systemu plików
+	mov	rsi,	variable_vfs_superblock
+
+	; pobierz rozmiar katalogu głównego
+	mov	rcx,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.s_knots_table_size]
+
+	; zachowaj adres docelowy
+	push	rdi
+
+	; przygotuj miejsce pod tablicę w przestrzeni porocesu
+	mov	rax,	VARIABLE_MEMORY_HIGH_ADDRESS
+	sub	rdi,	rax
+	mov	rax,	rdi	; ustaw na swoje miejsce - rax => adres
+	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
+	mov	r11,	cr3
+	call	cyjon_page_map_logical_area
+
+	; ustaw wskaźnik na początek tablicy supłów
+	mov	rsi,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.s_knots_table]
+
+	; przywróć adres docelowy
+	pop	rdi
+
+	; wyczyść rozmiar katalogu głównego w Bajtach
+	xor	rdx,	rdx
+
+.restart:
+	;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	; debug: aż mi niedobrze, gdy widzę swój stary kod...
+	; WSZYSTKO DO POPRAWY! CAŁY STEROWNIK VFS!
+	; skopiuj zawartość katalogu głównego do procesu
+	mov	rcx,	73*56
+	add	rdx,	rcx
+	rep	movsb
+
+	and	si,	0xF000
+	or	si,	0xFFF8
+	mov	rsi,	qword [rsi]
+	cmp	rsi,	VARIABLE_EMPTY
+	je	.end
+
+	jmp	.restart
+	;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+.error:
+.end:
+	; przywróć oryginalne rejestry
+	pop	r11
+	pop	rdi
+	pop	rsi
+	pop	rcx
+	pop	rbx
+	pop	rax
 
 	; koniec obsługi przerwania programowego
 	iretq

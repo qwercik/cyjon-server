@@ -18,6 +18,7 @@ all:
 	$(ASM) $(SOFTWARE)/kill.asm		-o $(BUILD)/kill.bin
 	$(ASM) $(SOFTWARE)/free.asm		-o $(BUILD)/free.bin
 	$(ASM) $(SOFTWARE)/x.asm		-o $(BUILD)/x.bin
+	$(ASM) $(SOFTWARE)/ls.asm		-o $(BUILD)/ls.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -36,4 +37,5 @@ clean:
 		$(BUILD)/kill.bin	\
 		$(BUILD)/free.bin	\
 		$(BUILD)/x.bin		\
-		$(BUILD)/hello.bin
+		$(BUILD)/hello.bin	\
+		$(BUILD)/ls.bin		

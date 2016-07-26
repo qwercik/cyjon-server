@@ -140,6 +140,13 @@ files_table:
 	dq	file_x_end
 	db	'x'
 
+	; plik
+	dq	2
+	dq	file_ls_end - file_ls
+	dq	file_ls
+	dq	file_ls_end
+	db	'ls'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -172,3 +179,6 @@ file_free_end:
 
 file_x:			incbin	'build/x.bin'
 file_x_end:
+
+file_ls:		incbin	'build/ls.bin'
+file_ls_end:

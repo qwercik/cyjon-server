@@ -172,6 +172,12 @@ ah 0x04	- obsługa sieci
 			rsi - wskaźnik do danych pakietu
 		WYJŚCIE:
 			brak
+ah 0x05	- obsługa wirtualnego systemu plików
+	al 0x00	- pobierz zawartość katalogu głównego
+		WEJŚCIE:
+			rdi - gdzie w przestrzeni procesu zapisać zawartość katalogu głównego
+		WYJŚCIE:
+			rdi - ZERO jeśli błąd
 ah 0x06 - obsługa trybu graficznego
 	al 0x00 - wyczyść ekran
 		WEJŚCIE:
