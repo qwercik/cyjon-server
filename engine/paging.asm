@@ -391,10 +391,6 @@ cyjon_page_allocate:
 	push	rax
 	push	rcx
 	push	rsi
-	pushf
-
-	; wyczyść adres strony zwracanej
-	xor	rdi,	rdi
 
 .wait:
 	; sprawdź czy binarna mapa pamięci jest dostępna do modyfikacji
@@ -423,8 +419,8 @@ cyjon_page_allocate:
 	cmp	rax,	VARIABLE_FULL
 	jne	.found
 
-	; nie znalziono wolnej strony
-	xor	rdi,	rdi
+	; flaga, błąd
+	stc
 
 	; koniec
 	jmp	.end
@@ -440,12 +436,14 @@ cyjon_page_allocate:
 	; zamień adres fizyczny względny na bezwzględny
 	add	rdi,	VARIABLE_KERNEL_PHYSICAL_ADDRESS
 
+	; flaga, sukces
+	clc
+
 .end:
 	; zwolnij dostęp do binarnej mapy pamięci
 	mov	byte [variable_page_allocate_semaphore],	VARIABLE_EMPTY
 
 	; przywróć oryginalne rejestry i flagi
-	popf
 	pop	rsi
 	pop	rcx
 	pop	rax

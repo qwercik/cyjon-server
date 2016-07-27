@@ -129,11 +129,11 @@ irq32:
 	push	rdx
 	push	rsi
 	push	rdi
-	push	rbp
 
 	; rejestr RSP został już zachowany poprzez wywołanie przerwania sprzętowego IRQ0
 	; push	rsp
 
+	push	rbp
 	push	r8
 	push	r9
 	push	r10
@@ -207,11 +207,11 @@ irq32:
 	pop	r10
 	pop	r9
 	pop	r8
+	pop	rbp
 
 	; rejestr RSP zostanie przywrócony po zakończeniu przerwania sprzętowego IRQ0
 	; pop	rsp
 
-	pop	rbp
 	pop	rdi
 	pop	rsi
 	pop	rdx

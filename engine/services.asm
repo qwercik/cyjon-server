@@ -1025,22 +1025,22 @@ irq64_vfs_dir_root:
 	; pobierz pozycję surperbloku wirtualnego systemu plików
 	mov	rsi,	variable_vfs_superblock
 
-	; pobierz rozmiar katalogu głównego
-	mov	rcx,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.s_knots_table_size]
+	; pobierz rozmiar katalogu głównego w blokach
+	mov	rcx,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.size]
 
 	; zachowaj adres docelowy
 	push	rdi
 
-	; przygotuj miejsce pod tablicę w przestrzeni porocesu
+	; przygotuj miejsce pod tablicę w przestrzeni procesu
 	mov	rax,	VARIABLE_MEMORY_HIGH_ADDRESS
 	sub	rdi,	rax
 	mov	rax,	rdi	; ustaw na swoje miejsce - rax => adres
-	mov	rbx,	0x07	; flagi: Użytkownik, 4 KiB, Odczyt/Zapis, Dostępna
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
 	mov	r11,	cr3
 	call	cyjon_page_map_logical_area
 
 	; ustaw wskaźnik na początek tablicy supłów
-	mov	rsi,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.s_knots_table]
+	mov	rsi,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.root]
 
 	; przywróć adres docelowy
 	pop	rdi
@@ -1049,24 +1049,18 @@ irq64_vfs_dir_root:
 	xor	rdx,	rdx
 
 .restart:
-	;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	; debug: aż mi niedobrze, gdy widzę swój stary kod...
-	; WSZYSTKO DO POPRAWY! CAŁY STEROWNIK VFS!
-	; skopiuj zawartość katalogu głównego do procesu
-	mov	rcx,	73*56
-	add	rdx,	rcx
+	; ilość rekordów na blok danych katalogu głównego
+	mov	rcx,	STRUCTURE_VFS_BLOCK.SIZE - VARIABLE_QWORD_SIZE
+	add	rdx,	rcx	; oblicz rozmiar katalogu głównego w Bajtach
+	; kopiuj do procesu
 	rep	movsb
 
-	and	si,	0xF000
-	or	si,	0xFFF8
-	mov	rsi,	qword [rsi]
+	; określ adres kolejnego bloku danych katalogu głównego
+	and	si,	VARIABLE_MEMORY_PAGE_ALIGN
+	mov	rsi,	qword [rsi + STRUCTURE_VFS_BLOCK.link]
 	cmp	rsi,	VARIABLE_EMPTY
-	je	.end
+	jne	.restart
 
-	jmp	.restart
-	;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-.error:
 .end:
 	; przywróć oryginalne rejestry
 	pop	r11
@@ -1078,6 +1072,13 @@ irq64_vfs_dir_root:
 
 	; koniec obsługi przerwania programowego
 	iretq
+
+.error:
+	; błąd adresu docelowego
+	xor	rdi,	rdi
+
+	; koniec
+	jmp	.end
 
 ;===============================================================================
 ;===============================================================================

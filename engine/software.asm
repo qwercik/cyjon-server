@@ -26,7 +26,7 @@ move_included_files_to_virtual_filesystem:
 	mov	rsi,	files_table
 
 .loop:
-	;~ ; koniec tablicy?
+	; koniec tablicy plików?
 	cmp	qword [rsi],	VARIABLE_EMPTY
 	je	.end	; tak
 
@@ -46,14 +46,15 @@ move_included_files_to_virtual_filesystem:
 	add	rsi,	0x20
 
 	; zapisz do wirtualnego systemu plików
-	call	cyjon_virtual_file_system_save_file
+	call	cyjon_vfs_file_save
+	jc	.error
 
 	; przywróć wskaźnik
 	pop	rsi
 
 	; przesuń na następny rekord
-	add	rsi,	0x20
-	add	rsi,	rcx
+	add	rsi,	qword [rsi]	; ilość znaków w nazwie pliku
+	add	rsi,	0x20	; rozmiar pozostałej części rekordu
 
 	; kontynuuj z pozostałymi plikami
 	jmp	.loop
@@ -67,6 +68,9 @@ move_included_files_to_virtual_filesystem:
 
 	; powrót z procedury
 	ret
+
+.error:
+	jmp	$
 
 files_table:
 	; pierwszym plikiem musi być "init"

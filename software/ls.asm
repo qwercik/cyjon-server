@@ -11,27 +11,21 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-; CAŁY SYSTEM PLIKÓW DO PRZEPISANIA
-; WIĘC PROGRAM TEŻ ULEGNIE ZMIANIE
-;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 ; zestaw imiennych wartości stałych jądra systemu
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME		ls
 %define	VARIABLE_PROGRAM_NAME_CHARS	2
-%define	VARIABLE_PROGRAM_VERSION	"v0.1"
+%define	VARIABLE_PROGRAM_VERSION	"v0.2"
 
-struc	ENTRY
-	.knot_id			resq	1
-	.file_size			resq	1
-	.chars				resq	1
-	.name				resb	1
+; struktura supła w drzewie katalogu
+struc STRUCTURE_KNOT
+	.id	resq	1
+	.size	resq	1
+	.chars	resq	1
+	.name	resb	32	; ilość znaków na nazwę pliku
+	.SIZE	resb	1	; rozmiar struktury w Bajtach
 endstruc
-
-VARIABLE_ENTRY_TYPE_FILE	equ	0x8000
-VARIABLE_ENTRY_TYPE_DIR		equ	0x4000
 
 ; 64 Bitowy kod programu
 [BITS 64]
@@ -50,26 +44,22 @@ start:
 	mov	ax,	VARIABLE_KERNEL_SERVICE_VFS_DIR_ROOT
 	int	STATIC_KERNEL_SERVICE
 
-	xchg	bx,bx
-
 	; przystępujemy do wyświetlenia zawartości
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
 
-	; ustaw dane przerwania
-	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; al - narzędzia ekranu, ah - procedura - wyświetl ciąg tekstu znajdujący się pod adresem logicznym w rejestrze rsi, zakończony terminatorem (0x00)
-
-	; oblicz koniec "tablicy" katalogu głównego użyszkodnika
+	; oblicz koniec "tablicy" katalogu
 	add	rdx,	rdi
 
-	; ustaw wskaźnik poczatku tablicy
+	; ustaw wskaźnik początku tablicy
 	mov	rsi,	rdi
 
 .loop:
 	; sprawdź czy koniec rekordów
-	cmp	qword [rsi + ENTRY.file_size],	VARIABLE_EMPTY
+	cmp	qword [rsi + STRUCTURE_KNOT.size],	VARIABLE_EMPTY
 	je	.end
 
 	; pobierz rozmiar nazwy pliku w znakach
-	movzx	rcx,	byte [rsi + ENTRY.chars]
+	movzx	rcx,	byte [rsi + STRUCTURE_KNOT.chars]
 
 	; załaduj kolor dla zwykłego pliku
 	mov	ebx,	VARIABLE_COLOR_DEFAULT
@@ -80,7 +70,7 @@ start:
 	mov	edx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 
 	; przesuń wskaźnik na ciąg znaków przedstawiający nazwe pliku
-	add	rsi,	ENTRY.name
+	add	rsi,	STRUCTURE_KNOT.name
 	int	STATIC_KERNEL_SERVICE	; wykonaj
 
 	; wyświetl odstęp pomięczy nazwami
@@ -93,23 +83,15 @@ start:
 
 .leave:
 	; przesuń wskaźnik na następny rekord
-	add	rsi,	56
+	add	rsi,	STRUCTURE_KNOT.SIZE
 
 	; wyświetl pozostałe pliki zawarte w tablicy
 	jmp	.loop
 
 .end:
-	; zakończ wyświetlanie zawartości katalogu głównego użyszkodnika nową linią i karetką
-	mov	edx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	mov	rsi,	text_new_line
-	int	STATIC_KERNEL_SERVICE	; wykonaj
-
 	; program kończy działanie
 	mov	ax,	VARIABLE_KERNEL_SERVICE_PROCESS_END
 	int	STATIC_KERNEL_SERVICE	; wykonaj
-
-%include	'library/find_first_word.asm'
-%include	'library/compare_string.asm'
 
 variable_semaphore_all	db	VARIABLE_EMPTY
 

@@ -29,7 +29,7 @@ ah 0x00	- obsługa procesów
 	al 0x04 - lista uruchomionych procesów/demonów
 		WEJŚCIE:
 			rdi - wskaźnik, gdzie utworzyć tablicę uruchomionych procesów
-				jeden rekord tablicy ma postać:
+				struktura rekordu tablicy:
 				struc VARIABLE_TABLE_SERPENTINE_RECORD
 					.PID	resq	1
 					.CR3	resq	1	; wartość pusta
@@ -176,8 +176,29 @@ ah 0x05	- obsługa wirtualnego systemu plików
 	al 0x00	- pobierz zawartość katalogu głównego
 		WEJŚCIE:
 			rdi - gdzie w przestrzeni procesu zapisać zawartość katalogu głównego
+				jeśli adres nie będzie wyrównany do pełnej strony tj. 0xF000
+				jądro systemu samo tego dokona, zaokrąglając w górę!
+				struktura supła w drzewie katalogu
+				struc STRUCTURE_VFS_KNOT
+					.id	resq	1
+					.size	resq	1
+					.chars	resq	1
+					.name	resb	32	; ilość znaków na nazwę pliku
+					.SIZE	resb	1	; rozmiar struktury w Bajtach
+				endstruc
 		WYJŚCIE:
-			rdi - ZERO jeśli błąd
+			rdi - ZERO jeśli błąd adresu docelowego
+	(jeszcze nie dostępne) al 0x02	- zapisz nowy plik
+		WEJŚCIE:
+			rcx - ilość znaków w nazwie pliku
+			rdx - rozmiar pliku w Bajtach
+			rsi - wskaźnik do nazwy pliku
+			rdi - wskaźnik do danych pliku
+		WYJŚCIE:
+			rbx - kod błędu, ZERO jeśli OK
+				0x01 - plik o podanej nazwie już istnieje
+				0x02 - brak wolnej pamięci
+			rcx - identyfikator pliku w katalogu głównym
 ah 0x06 - obsługa trybu graficznego
 	al 0x00 - wyczyść ekran
 		WEJŚCIE:

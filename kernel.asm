@@ -136,7 +136,7 @@ kernel:
 %include	"engine/multitasking.asm"
 %include	"engine/programmable_interrupt_controller.asm"
 %include	"engine/programmable_interval_timer.asm"
-%include	"engine/virtual_file_system.asm"
+%include	"engine/vfs.asm"
 %include	"engine/keyboard.asm"
 %include	"engine/services.asm"
 %include	"engine/process.asm"

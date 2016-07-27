@@ -128,8 +128,8 @@ cyjon_process_init:
 	push	VARIABLE_EMPTY
 
 	; szukaj pliku w wirtualnym systemie plików
-	call	cyjon_virtual_file_system_find_file
-	jc	.found	; znaleziono
+	call	cyjon_vfs_file_find
+	jnc	.found	; znaleziono
 
 	; nie znaleziono, zwróć wynik operacji w rcx
 	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	VARIABLE_EMPTY
@@ -170,7 +170,7 @@ cyjon_process_init:
 	; załaduj plik do pamięci pod przygotowaną przestrzeń
 	mov	rsi,	qword [rdi]	; numer pierwszego bloku danych pliku
 	mov	rdi,	VARIABLE_MEMORY_HIGH_VIRTUAL_ADDRESS - ( VARIABLE_MEMORY_PML4_RECORD_SIZE * 2 )
-	call	cyjon_virtual_file_system_read_file
+	call	cyjon_vfs_file_read
 
 	; przygotuj miejsce dla tablicy PML4 procesu
 	call	cyjon_page_allocate
