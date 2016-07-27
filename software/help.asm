@@ -93,7 +93,7 @@ command_table:
 	db	'kill   '
 	dq	text_kill
 
-	db	'ls'
+	db	'ls     '
 	dq	text_ls
 
 	db	'ps     '
