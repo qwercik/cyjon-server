@@ -158,6 +158,13 @@ files_table:
 	dq	file_cat_end
 	db	'cat'
 
+	; plik
+	dq	10
+	dq	file_readme_end - file_readme
+	dq	file_readme
+	dq	file_readme_end
+	db	'readme.txt'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -196,3 +203,6 @@ file_ls_end:
 
 file_cat:		incbin	'build/cat.bin'
 file_cat_end:
+
+file_readme:		incbin	'software/readme.txt'
+file_readme_end:

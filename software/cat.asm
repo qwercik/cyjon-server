@@ -62,15 +62,17 @@ start:
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 
 .loop:
-	; pobier znak do wyświetlenia
+	; pobierz znak do wyświetlenia
 	mov	r8b,	byte [rdi]
 
 	; zignoruj znaki specjalne
 	cmp	r8b,	VARIABLE_ASCII_CODE_ENTER
 	je	.omit
-	cmp	r8b,	VARIABLE_ASCII_CODE_NEWLINE
-	je	.omit
 
+	cmp	r8b,	VARIABLE_ASCII_CODE_NEWLINE
+	je	.return
+
+.continue:
 	; wyświetl
 	int	STATIC_KERNEL_SERVICE
 
@@ -82,6 +84,17 @@ start:
 	; kontynuuj z pozostałą zawartością pliku
 	inc	rdi
 	jmp	.loop
+
+.return:
+	; przesuń kursor na początek linii
+	mov	r8b,	VARIABLE_ASCII_CODE_ENTER
+	int	STATIC_KERNEL_SERVICE
+
+	; wyświetl aktualny znak
+	mov	r8b,	VARIABLE_ASCII_CODE_NEWLINE
+
+	; kontynuuj
+	jmp	.continue
 
 .no_file:
 	; koniec programu
