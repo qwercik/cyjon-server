@@ -37,7 +37,7 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 	; czy argumenty istnieją?
-	cmp	rcx,	0x02
+	cmp	rcx,	VARIABLE_PROGRAM_NAME_CHARS
 	jbe	.no_option
 
 	; pomiń nazwę procesu w argumentach

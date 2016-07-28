@@ -19,6 +19,7 @@ all:
 	$(ASM) $(SOFTWARE)/free.asm		-o $(BUILD)/free.bin
 	$(ASM) $(SOFTWARE)/x.asm		-o $(BUILD)/x.bin
 	$(ASM) $(SOFTWARE)/ls.asm		-o $(BUILD)/ls.bin
+	$(ASM) $(SOFTWARE)/cat.asm		-o $(BUILD)/cat.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -38,4 +39,5 @@ clean:
 		$(BUILD)/free.bin	\
 		$(BUILD)/x.bin		\
 		$(BUILD)/hello.bin	\
-		$(BUILD)/ls.bin		
+		$(BUILD)/ls.bin		\
+		$(BUILD)/cat.bin

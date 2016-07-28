@@ -188,6 +188,16 @@ ah 0x05	- obsługa wirtualnego systemu plików
 				endstruc
 		WYJŚCIE:
 			rdi - ZERO jeśli błąd adresu docelowego
+	al 0x01	- odczytaj plik
+		WEJŚCIE:
+			rcx - ilość znaków w nazwie pliku
+			rsi - wskaźnik do nazwy pliku
+			rdi - adres docelowy ładowanego pliku
+		WYJŚCIE:
+			rbx - kod błędu, ZERO jeśli OK
+				0x03 - pliku nie znaleziono
+			rcx - rozmiar wczytanego pliku w Bajtach
+			rdi - ZERO jeśli błąd adresu
 	(jeszcze nie dostępne) al 0x02	- zapisz nowy plik
 		WEJŚCIE:
 			rcx - ilość znaków w nazwie pliku

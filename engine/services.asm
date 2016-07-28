@@ -179,6 +179,10 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_VFS_DIR_ROOT
 	je	irq64_vfs_dir_root
 
+	; odczytać plik?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VFS_FILE_READ
+	je	irq64_vfs_file_read
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -1003,6 +1007,7 @@ irq64_vfs_dir_root:
 	push	rcx
 	push	rsi
 	push	rdi
+	push	r8
 	push	r11
 
 	; sprawdź czy proces prosi o załadowanie zawartości katalogu głównego w dozwolone miejsce
@@ -1012,14 +1017,14 @@ irq64_vfs_dir_root:
 
 	; wyrównaj adres do pełnej strony
 	and	di,	VARIABLE_MEMORY_PAGE_ALIGN
-	cmp	rdi,	qword [rsp]
+	cmp	rdi,	qword [rsp + VARIABLE_QWORD_SIZE * 0x02]
 	je	.aligned
 
 	; przesuń wskaźnik na następną stronę
 	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
 
 	; aktualizuj adres na stosie
-	mov	qword [rsp + VARIABLE_QWORD_SIZE],	rdi
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x02],	rdi
 
 .aligned:
 	; pobierz pozycję surperbloku wirtualnego systemu plików
@@ -1039,11 +1044,11 @@ irq64_vfs_dir_root:
 	mov	r11,	cr3
 	call	cyjon_page_map_logical_area
 
-	; ustaw wskaźnik na początek tablicy supłów
-	mov	rsi,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.root]
-
 	; przywróć adres docelowy
 	pop	rdi
+
+	; ustaw wskaźnik na początek tablicy supłów
+	mov	rsi,	qword [rsi + STRUCTURE_VFS_SUPERBLOCK.root]
 
 	; wyczyść rozmiar katalogu głównego w Bajtach
 	xor	rdx,	rdx
@@ -1064,6 +1069,7 @@ irq64_vfs_dir_root:
 .end:
 	; przywróć oryginalne rejestry
 	pop	r11
+	pop	r8
 	pop	rdi
 	pop	rsi
 	pop	rcx
@@ -1076,6 +1082,113 @@ irq64_vfs_dir_root:
 .error:
 	; błąd adresu docelowego
 	xor	rdi,	rdi
+
+	; koniec
+	jmp	.end
+
+;-------------------------------------------------------------------------------
+irq64_vfs_file_read:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rsi
+	push	r8
+	push	r11
+	push	rdi
+
+	; sprawdź czy proces prosi o załadowanie zawartości katalogu głównego w dozwolone miejsce
+	mov	rax,	VARIABLE_MEMORY_HIGH_REAL_ADDRESS
+	cmp	rdi,	rax
+	jb	.error
+
+	; wyrównaj adres do pełnej strony
+	and	di,	VARIABLE_MEMORY_PAGE_ALIGN
+	cmp	rdi,	qword [rsp]
+	je	.aligned
+
+	; przesuń wskaźnik na następną stronę
+	add	rdi,	VARIABLE_MEMORY_PAGE_SIZE
+
+	; aktualizuj adres na stosie
+	mov	qword [rsp],	rdi
+
+.aligned:
+	; szukaj pliku w wirtualnym systemie plików
+	call	cyjon_vfs_file_find
+	jc	.no_file
+
+	; pobierz rozmiar pliku
+	mov	rcx,	qword [rdi + STRUCTURE_VFS_KNOT.size]
+	push	rcx	; zapamiętaj
+
+	; oblicz rozmiar pliku w stronach
+	and	cx,	VARIABLE_MEMORY_PAGE_ALIGN
+	cmp	rcx,	qword [rdi + STRUCTURE_VFS_KNOT.size]
+	je	.size_ok
+
+	; istnieje reszta z dzielenia
+	add	rcx,	VARIABLE_MEMORY_PAGE_SIZE
+
+.size_ok:
+	; zamień na ilość stron
+	shr	rcx,	VARIABLE_MEMORY_PAGE_SIZE_IN_BITS
+
+	; pobierz identyfikator pierwszego bloku danych pliku
+	mov	rsi,	qword [rdi + STRUCTURE_VFS_KNOT.id]
+
+	; plik zapisz w miejscu docelowym procesu
+	mov	rdi,	qword [rsp + VARIABLE_QWORD_SIZE]
+
+	; zachowaj wskaźnik docelowy
+	push	rdi
+
+	; przygotuj miejsce pod wczytywany plik w przestrzeni procesu
+	mov	rax,	VARIABLE_MEMORY_HIGH_ADDRESS
+	sub	rdi,	rax
+	mov	rax,	rdi	; ustaw na swoje miejsce - rax => adres
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
+	mov	r11,	cr3
+	call	cyjon_page_map_logical_area
+
+	; przywróć wskaźnik docelowy
+	pop	rdi
+
+	; przywróć rozmiar pliku w Bajtach
+	pop	rcx
+
+	; załaduj plik do pamięci procesu
+	call	cyjon_vfs_file_read
+
+	; zwróć rozmiar do procesu
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x04],	rcx
+
+	; brak błędu
+	xor	rbx,	rbx
+
+	; koniec
+	jmp	.end
+
+.no_file:
+	; pliku nie znaleziono
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x05],	VARIABLE_VFS_ERROR_FILE_NOT_EXISTS
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	r11
+	pop	r8
+	pop	rsi
+	pop	rcx
+	pop	rbx
+	pop	rax
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+.error:
+	; błąd adresu docelowego
+	mov	qword [rsp],	VARIABLE_EMPTY
 
 	; koniec
 	jmp	.end

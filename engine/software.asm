@@ -151,6 +151,13 @@ files_table:
 	dq	file_ls_end
 	db	'ls'
 
+	; plik
+	dq	3
+	dq	file_cat_end - file_cat
+	dq	file_cat
+	dq	file_cat_end
+	db	'cat'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -186,3 +193,6 @@ file_x_end:
 
 file_ls:		incbin	'build/ls.bin'
 file_ls_end:
+
+file_cat:		incbin	'build/cat.bin'
+file_cat_end:
