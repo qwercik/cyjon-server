@@ -72,6 +72,9 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 command_table:
+	db	'bfi    '
+	dq	text_bfi
+
 	db	'cat    '
 	dq	text_cat
 

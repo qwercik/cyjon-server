@@ -12,10 +12,10 @@
 ; nasm - http://www.nasm.us/
 
 %define VARIABLE_KERNEL_NAME			Cyjon
-%define	VARIABLE_KERNEL_VERSION			"0.647"
+%define	VARIABLE_KERNEL_VERSION			"0.648"
 
 ; dostępne lokalizacje: en_US.ASCII, pl_PL.ASCII
-%define	VARIABLE_KERNEL_LOCALE			en_US.ASCII
+%define	VARIABLE_KERNEL_LOCALE			pl_PL.ASCII
 
 VARIABLE_KERNEL_MODE_32BIT			equ	0x20
 VARIABLE_KERNEL_MODE_64BIT			equ	0x40

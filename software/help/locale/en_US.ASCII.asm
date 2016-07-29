@@ -1,3 +1,4 @@
+text_bfi	db	"Brainfuck language interpreter,", VARIABLE_ASCII_CODE_RETURN
 text_cat	db	"print file content,", VARIABLE_ASCII_CODE_RETURN
 text_clear	db	"clean console screen,", VARIABLE_ASCII_CODE_RETURN
 text_exit	db	"logout,", VARIABLE_ASCII_CODE_RETURN
