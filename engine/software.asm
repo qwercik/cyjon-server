@@ -165,6 +165,20 @@ files_table:
 	dq	file_readme_end
 	db	'readme.txt'
 
+	; plik
+	dq	3
+	dq	file_bfi_end - file_bfi
+	dq	file_bfi
+	dq	file_bfi_end
+	db	'bfi'
+
+	; plik
+	dq	8
+	dq	file_hello_end - file_hello
+	dq	file_hello
+	dq	file_hello_end
+	db	'hello.bf'
+
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
 
@@ -206,3 +220,9 @@ file_cat_end:
 
 file_readme:		incbin	'software/readme.txt'
 file_readme_end:
+
+file_bfi:		incbin	'build/bfi.bin'
+file_bfi_end:
+
+file_hello:		incbin	'software/hello.bf'
+file_hello_end:

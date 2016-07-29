@@ -1,3 +1,4 @@
+text_cat	db	"wyświetla zawartość pliku,", VARIABLE_ASCII_CODE_RETURN
 text_clear	db	"czysci ekran konsoli,", VARIABLE_ASCII_CODE_RETURN
 text_exit	db	"wylogowanie,", VARIABLE_ASCII_CODE_RETURN
 text_free	db	"troche informacji o pamieci,", VARIABLE_ASCII_CODE_RETURN

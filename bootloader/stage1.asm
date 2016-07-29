@@ -42,6 +42,9 @@ start:
 	; włącz przerwania
 	sti
 
+	; wyczyść DirectionFlag
+	cld
+
 	; skorzystamy z przerwania 0x13, procedury 0x42
 	; istnieją jednostki lub inne złomy, których BIOS nie udostępnia danej procedury, gdy o nią wpierw nie zapytamy
 	mov	ah,	0x41	; procedura - sprawdź dostępne rozszerzenia

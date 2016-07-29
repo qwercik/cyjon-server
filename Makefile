@@ -20,6 +20,7 @@ all:
 	$(ASM) $(SOFTWARE)/x.asm		-o $(BUILD)/x.bin
 	$(ASM) $(SOFTWARE)/ls.asm		-o $(BUILD)/ls.bin
 	$(ASM) $(SOFTWARE)/cat.asm		-o $(BUILD)/cat.bin
+	$(ASM) $(SOFTWARE)/bfi.asm		-o $(BUILD)/bfi.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -40,4 +41,5 @@ clean:
 		$(BUILD)/x.bin		\
 		$(BUILD)/hello.bin	\
 		$(BUILD)/ls.bin		\
-		$(BUILD)/cat.bin
+		$(BUILD)/cat.bin	\
+		$(BUILD)/bfi.bin

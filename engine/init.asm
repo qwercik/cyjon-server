@@ -15,6 +15,9 @@
 [BITS 32]
 
 entry:
+	; wyczyść DirectionFlag
+	cld
+
 	; ustaw wskaźnik szczytu stosu na gwarantowaną wolną przestrzeń
 	; taka mała ilość wystarczy (tablica multiboot nie jest już potrzebna)
 	mov	esp,	0x00001000

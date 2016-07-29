@@ -72,6 +72,9 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 command_table:
+	db	'cat    '
+	dq	text_cat
+
 	db	'clear  '
 	dq	text_clear
 

@@ -27,6 +27,9 @@ VARIABLE_MEMORY_MAP_ADDRESS		equ	0x00000500
 ;-------------------------------------------------------------------------------
 
 start:
+	; wyczyść DirectionFlag
+	cld
+
 	; wyłącz przerwania sprzętowe
 	call	stage2_disable_pic
 
