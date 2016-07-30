@@ -131,6 +131,10 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SHOW
 	je	irq64_screen_cursor_show
 
+	; przesunąć część ekranu?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_SCROLL
+	je	irq64_screen_scroll
+
 	; koniec obsługi przerwania programowego
 	iretq
 
@@ -182,6 +186,14 @@ irq64:
 	; odczytać plik?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_VFS_FILE_READ
 	je	irq64_vfs_file_read
+
+	; zapisać plik?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VFS_FILE_SAVE
+	je	irq64_vfs_file_save
+
+	; zaktualizować plik?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VFS_FILE_UPDATE
+	je	irq64_vfs_file_update
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -660,23 +672,14 @@ irq64_screen_print_char:
 	; pobierz pozycje kursora w przestrzeni pamięci ekranu
 	mov	rdi,	qword [variable_screen_cursor_indicator]
 
-.loop:
 	; wyświetl znak
 	call	cyjon_screen_print_char
 
 	; zapisz aktualną pozycję kursora w przestrzeni pamięci ekranu
 	mov	qword [variable_screen_cursor_indicator],	rdi
 
-	; tryb graficzny?
-	cmp	byte [variable_screen_video_mode_semaphore],	VARIABLE_TRUE
-	je	.graphics
-
-	; sprawdź pozycje kursora
+	; sprawdź pozycję wirtualnego kursora
 	call	cyjon_screen_cursor_virtual
-
-.continue:
-	; kontynuuj z pozostałą ilością powtórzeń
-	loop	.loop
 
 	; przesuń kursor na odpowiednią pozycję
 	call	cyjon_screen_cursor_move
@@ -691,13 +694,6 @@ irq64_screen_print_char:
 
 	; koniec obsługi przerwania programowego
 	iretq
-
-.graphics:
-	; sprawdź pozycję wirtualnego kursora
-	call	cyjon_screen_cursor_virtual
-
-	; kontynuuj
-	jmp	.continue
 
 ;-------------------------------------------------------------------------------
 irq64_screen_print_number:
@@ -800,6 +796,90 @@ irq64_screen_cursor_hide:
 ;-------------------------------------------------------------------------------
 irq64_screen_cursor_show:
 	call	cyjon_screen_cursor_unlock
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_screen_scroll:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rcx
+	push	rdx
+	push	rsi
+	push	rdi
+
+	; wyłącz kursor
+	call	cyjon_screen_cursor_lock
+
+	; wskaźnik początku pamięci przestrzeni ekranu
+	mov	rsi,	qword [variable_screen_base_address]
+
+	; oblicz adres lini źródłowej
+	mov	rax,	qword [variable_screen_line_of_chars_in_bytes]
+	mul	rdx
+
+	; ustaw/przesuń wskaźnik 
+	add	rsi,	rax
+
+	; oblicz rozmiar przestrzemi pamięci do przesunięcia
+	mov	rax,	qword [variable_screen_line_of_chars_in_bytes]
+	xor	rdx,	rdx
+	mul	rcx
+
+	; ustaw licznik
+	mov	rcx,	rax
+
+	; kierunek przesunięcia?
+	cmp	rbx,	VARIABLE_EMPTY
+	je	.up
+
+	; modyfikuj wskaźniki
+	mov	rdi,	rsi
+	add	rdi,	rcx
+	add	rsi,	rcx
+	sub	rsi,	qword [variable_screen_line_of_chars_in_bytes]
+
+	shr	rcx,	VARIABLE_DIVIDE_BY_8
+
+.loop:
+	; przenieś
+	mov	rax,	qword [rsi]
+	mov	qword [rdi],	rax
+	sub	rsi,	VARIABLE_QWORD_SIZE
+	sub	rdi,	VARIABLE_QWORD_SIZE
+	loop	.loop
+
+	; koniec
+	jmp	.end
+
+.up:
+	; ustaw wskaźnik docelowy
+	mov	rdi,	rsi
+	sub	rdi,	qword [variable_screen_line_of_chars_in_bytes]
+
+	; przenieś
+	shr	rcx,	VARIABLE_DIVIDE_BY_8
+	rep	movsq
+
+	; domyślny kolor tła
+	mov	rax,	VARIABLE_COLOR_BACKGROUND_DEFAULT >> VARIABLE_SHIFT_BY_4
+	mov	eax,	dword [table_color_palette_32_bit + rax * VARIABLE_DWORD_SIZE]
+
+	; wyczyść ostatnią linię
+	shr	rcx,	VARIABLE_DIVIDE_BY_4
+	rep	stosd
+
+.end:
+	; wyświetl kursor
+	call	cyjon_screen_cursor_unlock
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rsi
+	pop	rdx
+	pop	rcx
+	pop	rax
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -1118,6 +1198,9 @@ irq64_vfs_file_read:
 	call	cyjon_vfs_file_find
 	jc	.no_file
 
+	; zwróć identyfikator pliku
+	mov	rdx,	rdi
+
 	; pobierz rozmiar pliku
 	mov	rcx,	qword [rdi + STRUCTURE_VFS_KNOT.size]
 	push	rcx	; zapamiętaj
@@ -1164,7 +1247,7 @@ irq64_vfs_file_read:
 	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x04],	rcx
 
 	; brak błędu
-	xor	rbx,	rbx
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x05],	VARIABLE_EMPTY
 
 	; koniec
 	jmp	.end
@@ -1192,6 +1275,19 @@ irq64_vfs_file_read:
 
 	; koniec
 	jmp	.end
+
+;-------------------------------------------------------------------------------
+irq64_vfs_file_save:
+	; zapisz plik
+	call	cyjon_vfs_file_save
+
+	; koniec obsługi przerwania programowego
+	iretq
+
+;-------------------------------------------------------------------------------
+irq64_vfs_file_update:
+	; koniec obsługi przerwania programowego
+	iretq
 
 ;===============================================================================
 ;===============================================================================

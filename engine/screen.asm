@@ -125,7 +125,9 @@ cyjon_screen_init:
 	mov	byte [variable_screen_video_mode_semaphore],	VARIABLE_TRUE
 
 .no_graphics_mode:
-	; wyczyść ekran
+	; wyczyść cały ekran
+	xor	rbx,	rbx
+	xor	rcx,	rcx
 	call	cyjon_screen_clear
 
 	; przywróć oryginalne rejestry
@@ -191,21 +193,48 @@ cyjon_screen_clear:
 	push	rax
 	push	rbx
 	push	rcx
+	push	rdx
 	push	rdi
 
 	; tryb graficzny?
 	cmp	byte [variable_screen_video_mode_semaphore],	VARIABLE_TRUE
 	je	.graphics
 
-	; ustaw domyślną kolorystykę i znak czyszczenia "spacja"
-	mov	al,	VARIABLE_ASCII_CODE_SPACE
-	mov	ah,	VARIABLE_COLOR_DEFAULT + VARIABLE_COLOR_BACKGROUND_DEFAULT
+	; początek przestrzeni pamięci ekranu
+	mov	rdi,	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
 
+	; zacznij od linii Y?
+	cmp	rbx,	VARIABLE_EMPTY
+	je	.from_begin
+
+	; oblicz numer linii, od której rozpocząć czyszczenie ekranu
+	mov	rax,	qword [variable_screen_line_of_chars_in_bytes]
+	mul	rbx
+
+	; koryguj początek
+	add	rdi,	rax
+
+.from_begin:
+	; ograniczona ilość linii?
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.all_of_them
+
+	; oblicz ilość linii do wyczyszczenia
+	mov	rax,	qword [variable_screen_width_on_chars]
+	mul	rcx
+	mov	rcx,	rax
+
+	; kontynuuj
+	jmp	.prepared
+
+.all_of_them:
 	; rozmiar przestrzeni pamięci do wyczyszczenia
 	mov	rcx,	VARIABLE_SCREEN_TEXT_MODE_SIZE
 
-	; początek przestrzeni pamięci ekranu
-	mov	rdi,	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
+.prepared:
+	; ustaw domyślną kolorystykę i znak czyszczenia "spacja"
+	mov	al,	VARIABLE_ASCII_CODE_SPACE
+	mov	ah,	VARIABLE_COLOR_DEFAULT + VARIABLE_COLOR_BACKGROUND_DEFAULT
 
 .loop:
 	; wyczyść pierwszy znak
@@ -229,6 +258,7 @@ cyjon_screen_clear:
 .end:
 	; przywróć oryginalne rejestry
 	pop	rdi
+	pop	rdx
 	pop	rcx
 	pop	rbx
 	pop	rax
@@ -240,20 +270,46 @@ cyjon_screen_clear:
 	; wyłącz kursor
 	call	cyjon_screen_cursor_lock
 
-	; domyślny kolor tła
-	mov	rax,	VARIABLE_COLOR_BACKGROUND_DEFAULT >> VARIABLE_SHIFT_BY_4
-	mov	eax,	dword [table_color_palette_32_bit + rax * VARIABLE_DWORD_SIZE]
-
-	; wyczyść całą przestrzeń
-	mov	rcx,	qword [variable_screen_size]
-	shr	rcx,	VARIABLE_DIVIDE_BY_4
-
 	; początek przestrzeni pamięci trybu graficznego
 	mov	rdi,	qword [variable_screen_base_address]
 	; wirtualny kursor na początek ekranu
 	mov	qword [variable_screen_cursor],	VARIABLE_EMPTY
 
-	; czyść
+	; zacznij od linii Y?
+	cmp	rbx,	VARIABLE_EMPTY
+	je	.graphics_from_begin
+
+	; oblicz numer linii, od której rozpocząć czyszczenie ekranu
+	mov	rax,	qword [variable_screen_line_of_chars_in_bytes]
+	mul	rbx
+
+	; koryguj początek
+	add	rdi,	rax
+
+.graphics_from_begin:
+	; ograniczona ilość linii?
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.graphics_all_of_them
+
+	; oblicz ilość linii do wyczyszczenia
+	mov	rax,	qword [variable_screen_line_of_chars_in_bytes]
+	mul	rcx
+	mov	rcx,	rax
+
+	; kontynuuj
+	jmp	.graphics_prepared
+
+.graphics_all_of_them:
+	; wyczyść całą przestrzeń
+	mov	rcx,	qword [variable_screen_size]
+
+.graphics_prepared:
+	; domyślny kolor tła
+	mov	rax,	VARIABLE_COLOR_BACKGROUND_DEFAULT >> VARIABLE_SHIFT_BY_4
+	mov	eax,	dword [table_color_palette_32_bit + rax * VARIABLE_DWORD_SIZE]
+
+	; wyczyść
+	shr	rcx,	VARIABLE_DIVIDE_BY_4
 	rep	stosd
 
 	; zresetuj pozycje kursora

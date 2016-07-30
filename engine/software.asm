@@ -36,14 +36,17 @@ move_included_files_to_virtual_filesystem:
 	; pobierz ilość znaków w nazwie pliku
 	mov	rcx,	qword [rsi]
 
+	; pobierz uprawnienia
+	mov	rbx,	qword [rsi + 0x08]
+
 	; pobierz rozmiar pliku
-	mov	rdx,	qword [rsi + 0x08]
+	mov	rdx,	qword [rsi + 0x10]
 
 	; ustaw wskaźnik na początek danych pliku
-	mov	rdi,	qword [rsi + 0x10]
+	mov	rdi,	qword [rsi + 0x18]
 
 	; ustaw wskaźnik na nazwę pliku
-	add	rsi,	0x20
+	add	rsi,	0x28
 
 	; zapisz do wirtualnego systemu plików
 	call	cyjon_vfs_file_save
@@ -54,7 +57,7 @@ move_included_files_to_virtual_filesystem:
 
 	; przesuń na następny rekord
 	add	rsi,	qword [rsi]	; ilość znaków w nazwie pliku
-	add	rsi,	0x20	; rozmiar pozostałej części rekordu
+	add	rsi,	0x28	; rozmiar pozostałej części rekordu
 
 	; kontynuuj z pozostałymi plikami
 	jmp	.loop
@@ -76,6 +79,7 @@ files_table:
 	; pierwszym plikiem musi być "init"
 	; jądro systemu z tej tablicy uruchamia pierwszy proces
 	dq	4				; ilość znaków w nazwie pliku
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_init_end - file_init	; rozmiar pliku w Bajtach
 	dq	file_init			; wskaźnik początku pliku
 	dq	file_init_end			; wskaźnik końca pliku
@@ -83,6 +87,7 @@ files_table:
 
 	; plik
 	dq	5
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_shell_end - file_shell
 	dq	file_shell
 	dq	file_shell_end
@@ -90,6 +95,7 @@ files_table:
 
 	; plik
 	dq	5
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_login_end - file_login
 	dq	file_login
 	dq	file_login_end
@@ -97,6 +103,7 @@ files_table:
 
 	; plik
 	dq	2
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_ps_end - file_ps
 	dq	file_ps
 	dq	file_ps_end
@@ -104,6 +111,7 @@ files_table:
 
 	; plik
 	dq	2
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_ip_end - file_ip
 	dq	file_ip
 	dq	file_ip_end
@@ -111,6 +119,7 @@ files_table:
 
 	; plik
 	dq	4
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_help_end - file_help
 	dq	file_help
 	dq	file_help_end
@@ -118,6 +127,7 @@ files_table:
 
 	; plik
 	dq	5
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_httpd_end - file_httpd
 	dq	file_httpd
 	dq	file_httpd_end
@@ -125,6 +135,7 @@ files_table:
 
 	; plik
 	dq	4
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_kill_end - file_kill
 	dq	file_kill
 	dq	file_kill_end
@@ -132,6 +143,7 @@ files_table:
 
 	; plik
 	dq	4
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_free_end - file_free
 	dq	file_free
 	dq	file_free_end
@@ -139,6 +151,7 @@ files_table:
 
 	; plik
 	dq	1
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_x_end - file_x
 	dq	file_x
 	dq	file_x_end
@@ -146,6 +159,7 @@ files_table:
 
 	; plik
 	dq	2
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_ls_end - file_ls
 	dq	file_ls
 	dq	file_ls_end
@@ -153,6 +167,7 @@ files_table:
 
 	; plik
 	dq	3
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_cat_end - file_cat
 	dq	file_cat
 	dq	file_cat_end
@@ -160,6 +175,7 @@ files_table:
 
 	; plik
 	dq	10
+	dq	VARIABLE_PERMISSION_FILE_OTHER_READ + VARIABLE_PERMISSION_FILE_USER_WRITE	; możliwość odczytu i zapisu do pliku
 	dq	file_readme_end - file_readme
 	dq	file_readme
 	dq	file_readme_end
@@ -167,6 +183,7 @@ files_table:
 
 	; plik
 	dq	3
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
 	dq	file_bfi_end - file_bfi
 	dq	file_bfi
 	dq	file_bfi_end
@@ -174,10 +191,19 @@ files_table:
 
 	; plik
 	dq	8
+	dq	VARIABLE_PERMISSION_FILE_OTHER_READ + VARIABLE_PERMISSION_FILE_USER_WRITE	; możliwość odczytu i zapisu do pliku
 	dq	file_hello_end - file_hello
 	dq	file_hello
 	dq	file_hello_end
 	db	'hello.bf'
+
+	; plik
+	dq	4
+	dq	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE	; możliwość uruchomienia programu
+	dq	file_moko_end - file_moko
+	dq	file_moko
+	dq	file_moko_end
+	db	'moko'
 
 	; koniec tablicy plików
 	dq	VARIABLE_EMPTY
@@ -226,3 +252,6 @@ file_bfi_end:
 
 file_hello:		incbin	'software/hello.bf'
 file_hello_end:
+
+file_moko:		incbin	'build/moko.bin'
+file_moko_end:

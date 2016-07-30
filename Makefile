@@ -21,6 +21,7 @@ all:
 	$(ASM) $(SOFTWARE)/ls.asm		-o $(BUILD)/ls.bin
 	$(ASM) $(SOFTWARE)/cat.asm		-o $(BUILD)/cat.bin
 	$(ASM) $(SOFTWARE)/bfi.asm		-o $(BUILD)/bfi.bin
+	$(ASM) $(SOFTWARE)/moko.asm		-o $(BUILD)/moko.bin
 
 	$(ASM) kernel.asm			-o build/kernel.bin
 
@@ -42,4 +43,5 @@ clean:
 		$(BUILD)/hello.bin	\
 		$(BUILD)/ls.bin		\
 		$(BUILD)/cat.bin	\
-		$(BUILD)/bfi.bin
+		$(BUILD)/bfi.bin	\
+		$(BUILD)/moko.bin

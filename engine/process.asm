@@ -110,13 +110,13 @@ cyjon_process_init_daemon:
 ;	rdi - wskaźnik do ciągu argumentów
 ;
 ; OUT:
+;	rbx - kod błędu, jeśli ZERO - wszystko ok
 ;	rcx - numer PID uruchomionego procesu
 ;
 ; pozostałe rejestry zachowane
 cyjon_process_init:
 	; zachowaj oryginalne rejestry
 	push	rax
-	push	rbx
 	push	rcx
 	push	rdx
 	push	rsi
@@ -127,19 +127,22 @@ cyjon_process_init:
 	; zmienne lokalne
 	push	VARIABLE_EMPTY
 
+	; kod błędu
+	mov	rbx,	VARIABLE_PROCESS_ERROR_FILE_NOT_FOUND
+
 	; szukaj pliku w wirtualnym systemie plików
 	call	cyjon_vfs_file_find
-	jnc	.found	; znaleziono
+	jc	.end	; nie znaleziono
 
-	; nie znaleziono, zwróć wynik operacji w rcx
-	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	VARIABLE_EMPTY
+	; kod błędu
+	mov	rbx,	VARIABLE_PROCESS_ERROR_NO_EXECUTE
 
-	; koniec obsługi procedury
-	jmp	.end
+	; sprawdź czy plik jest wykonywalny
+	bt	qword [rdi + STRUCTURE_VFS_KNOT.permission],	VARIABLE_PERMISSION_FILE_OTHER_EXECUTE_BIT
+	jnc	.end	; nie
 
-.found:
 	; pobierz rozmiar pliku w Bajtach
-	mov	rcx,	qword [rdi + 0x08]
+	mov	rcx,	qword [rdi + STRUCTURE_VFS_KNOT.size]
 	push	rcx
 
 	; zaokrąglij rozmiar pliku do pełnej strony (w górę)
@@ -344,6 +347,9 @@ cyjon_process_init:
 	; zwróć w rcx numer PID
 	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	rbx
 
+	; kod błędu, sukces
+	xor	rbx,	rbx
+
 .end:
 	; usuń zmienne lokalne
 	pop	rax
@@ -355,7 +361,6 @@ cyjon_process_init:
 	pop	rsi
 	pop	rdx
 	pop	rcx
-	pop	rbx
 	pop	rax
 
 	; powrót z procedury
@@ -376,8 +381,8 @@ cyjon_process_init:
 	mov	rcx,	258	; ile pozostało rekordów w tablicy PML4 do zwolnienia
 	call	cyjon_page_release_area.loop
 
-	; brak numeru procesu, nie uruchomiono
-	xor	rcx,	rcx
+	; kod błędu
+	mov	rbx,	VARIABLE_PROCESS_ERROR_NO_FREE_MEMORY
 
 	; koniec
 	jmp	.end

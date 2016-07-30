@@ -122,7 +122,7 @@ kernel:
 
 	; uruchom pierwszy proces "init"
 	mov	rcx,	qword [files_table]	; ilość znaków w nazwie pliku
-	mov	rsi,	files_table + ( VARIABLE_QWORD_SIZE * 0x04 )	; wskaźnik do nazwy pliku
+	mov	rsi,	files_table + ( VARIABLE_QWORD_SIZE * 0x05 )	; wskaźnik do nazwy pliku
 	xor	rdx,	rdx	; brak argumentów
 	xor	rdi,	rdi	; ^
 	call	cyjon_process_init

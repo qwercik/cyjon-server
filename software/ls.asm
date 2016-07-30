@@ -20,11 +20,12 @@
 
 ; struktura supła w drzewie katalogu
 struc STRUCTURE_KNOT
-	.id	resq	1
-	.size	resq	1
-	.chars	resq	1
-	.name	resb	32	; ilość znaków na nazwę pliku
-	.SIZE	resb	1	; rozmiar struktury w Bajtach
+	.id		resq	1
+	.permission	resq	1
+	.size		resq	1
+	.chars		resq	1
+	.name		resb	32	; ilość znaków na nazwę pliku
+	.SIZE		resb	1	; rozmiar struktury w Bajtach
 endstruc
 
 ; 64 Bitowy kod programu

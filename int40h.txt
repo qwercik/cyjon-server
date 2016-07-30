@@ -10,9 +10,11 @@ ah 0x00	- obsługa procesów
 			rdi - wskaźnik do argumentów przekazywanych nowemu procesowi
 				ZERO jeśli brak
 		WYJŚCIE:
+			rbx - kod błędu, jeśli ZERO wszystko ok
+				0x01 - plik nie jest wykonywalny
+				0x02 - pliku nie znaleziono
+				0x03 - brak wystarczającej ilości pamięci do uruchomienia procesu
 			rcx - numer PID uruchomionego procesu
-				ZERO jeśli procesu nie udało się uruchomić
-				np. brak danego programu w systemie
 	al 0x02 - sprawdź czy proces jest uruchomiony
 		WEJŚCIE:
 			rcx - numer PID procesu do sprawdzenia
@@ -58,7 +60,10 @@ ah 0x00	- obsługa procesów
 			rcx - ZERO jeśli proces o podanym PID nie istniał
 ah 0x01	- obsługa trybu tekstowego
 	al 0x00	- wyczyść ekran
-		brak przekazywanych parametrów
+		WEJŚCIE:
+			rbx - numer linii (od ZERA) od której wyczyścić ekran
+			rcx - ilość linii do wyczyszczenia
+				jeśli ZERO, cały ekran
 	al 0x01	- wyświetl ciąg znaków (string)
 		WEJŚCIE:
 			rbx - kolor znaków (16 dostępnych kolorów z palety BIOS'u)
@@ -120,6 +125,16 @@ ah 0x01	- obsługa trybu tekstowego
 		brak przekazywanych parametrów
 	al 0x08 - pokaż kursor
 		brak przekazywanych parametrów
+	al 0x09	- przesuń część ekranu o linie w dół/górę
+		przerwanie jako pierwsze zostało wykorzystanie w edytorze tekstu ;)
+		WEJŚCIE:
+			rbx - kierunek przesuwania ekranu
+				0x00 - w dół
+				0x01 - w górę
+			rcx - łączna ilość linii do przesunięcia
+			rdx - rozpocznij od linii X
+		WYJŚCIE:
+			brak
 ah 0x02	- obsługa klawiatury
 	al 0x00 - pobierz kod ASCII naciśniętego klawisza
 		WEJŚCIE:
@@ -180,11 +195,12 @@ ah 0x05	- obsługa wirtualnego systemu plików
 				jądro systemu samo tego dokona, zaokrąglając w górę!
 				struktura supła w drzewie katalogu
 				struc STRUCTURE_VFS_KNOT
-					.id	resq	1
-					.size	resq	1
-					.chars	resq	1
-					.name	resb	32	; ilość znaków na nazwę pliku
-					.SIZE	resb	1	; rozmiar struktury w Bajtach
+					.id		resq	1
+					.permission	resq	1
+					.size		resq	1
+					.chars		resq	1
+					.name		resb	32	; ilość znaków na nazwę pliku
+					.SIZE		resb	1	; rozmiar struktury w Bajtach
 				endstruc
 		WYJŚCIE:
 			rdi - ZERO jeśli błąd adresu docelowego
@@ -197,9 +213,11 @@ ah 0x05	- obsługa wirtualnego systemu plików
 			rbx - kod błędu, ZERO jeśli OK
 				0x03 - pliku nie znaleziono
 			rcx - rozmiar wczytanego pliku w Bajtach
+			rdx - identyfikator pliku
 			rdi - ZERO jeśli błąd adresu
-	(jeszcze nie dostępne) al 0x02	- zapisz nowy plik
+	al 0x02	- zapisz nowy plik
 		WEJŚCIE:
+			rbx - uprawnienia do pliku
 			rcx - ilość znaków w nazwie pliku
 			rdx - rozmiar pliku w Bajtach
 			rsi - wskaźnik do nazwy pliku

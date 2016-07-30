@@ -207,14 +207,28 @@ start:
 	int	STATIC_KERNEL_SERVICE
 
 	; sprawdź czy uruchomiono nowy proces
-	cmp	rcx,	VARIABLE_EMPTY
-	ja	.process
+	cmp	rbx,	VARIABLE_EMPTY
+	je	.process
 
+	; pliku nie znaleziono
+	mov	rsi,	text_file_not_found
+	cmp	rbx,	VARIABLE_PROCESS_ERROR_FILE_NOT_FOUND
+	je	.print_error
+
+	; brak zgody na wykonanie
+	mov	rsi,	text_file_no_execute
+	cmp	rbx,	VARIABLE_PROCESS_ERROR_NO_EXECUTE
+	je	.print_error
+
+	; brak wolnej pamięci do uruchomienia programu
+	mov	rsi,	text_file_no_free_memory
+
+.print_error:
 	; wyświetl informację o braku danego programu na partycji systemowej
 	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING	; procedura wyświetlająca ciąg znaków zakończony TERMINATOREM lub sprecyzowaną ilością
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
 	mov	rcx,	VARIABLE_FULL	; wyświetl wszystkie znaki z ciągu
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
-	mov	rsi,	text_ups
 	int	STATIC_KERNEL_SERVICE
 
 	; pobierz następne polecenie od użytkownika

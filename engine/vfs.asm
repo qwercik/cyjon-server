@@ -14,6 +14,8 @@
 VARIABLE_VFS_ERROR_FILE_EXISTS		equ	0x01
 VARIABLE_VFS_ERROR_NO_FREE_SPACE	equ	0x02
 VARIABLE_VFS_ERROR_FILE_NOT_EXISTS	equ	0x03
+VARIABLE_VFS_ERROR_NAME_TO_LONG		equ	0x04
+VARIABLE_VFS_ERROR_NAME_TO_SHORT	equ	0x05
 
 ; SuperBlok
 variable_vfs_superblock	dq	VARIABLE_EMPTY
@@ -27,11 +29,12 @@ endstruc
 
 ; struktura supła w drzewie katalogu głównego
 struc STRUCTURE_VFS_KNOT
-	.id	resq	1
-	.size	resq	1
-	.chars	resq	1
-	.name	resb	32	; ilość znaków na nazwę pliku
-	.SIZE	resb	1	; rozmiar struktury w Bajtach
+	.id		resq	1
+	.permission	resq	1
+	.size		resq	1
+	.chars		resq	1
+	.name		resb	32	; ilość znaków na nazwę pliku
+	.SIZE		resb	1	; rozmiar struktury w Bajtach
 endstruc
 
 ; struktura bloku danych
@@ -99,24 +102,46 @@ vfs:
 ;===============================================================================
 ; procedura zapisuje plik do wirtualnego systemu plików
 ; IN:
+;	rbx - uprawnienia do pliku
 ;	rcx - ilość znaków w nazwie pliku
 ;	rdx - rozmiar pliku w Bajtach
 ;	rsi - wskaźnik do nazwy pliku
 ;	rdi - wskaźnik przechowywania pliku w pamięci
 ;
 ; OUT:
-;	brak
+;	rbx - kod błędu, ZERO jeśli ok
+;		0x01 - plik istnieje
+;		0x02 - brak wolnego miejsca
 ;
 ; wszystkie rejestry zachowane
 cyjon_vfs_file_save:
 	; zachowaj oryginalne rejestry
 	push	rax
+	push	rbx
 	push	rcx
 	push	rdx
 	push	rsi
 	push	rdi
 	push	r8
 	push	r9
+
+	; flaga, błąd
+	stc
+
+	; kod błędu, nazwa pliku za długa
+	mov	rbx,	VARIABLE_VFS_ERROR_NAME_TO_LONG
+
+	; sprawdź obsługiwaną długość nazwy pliku
+	mov	r8,	STRUCTURE_VFS_KNOT.SIZE - STRUCTURE_VFS_KNOT.name
+	cmp	r8,	rcx
+	jb	.end	; za długa nazwa pliku
+
+	; kod błędu, nazwa pliku za krótka
+	mov	rbx,	VARIABLE_VFS_ERROR_NAME_TO_SHORT
+
+	; sprawdź czy podano jakiekolwiek znaki
+	cmp	rcx,	VARIABLE_EMPTY
+	je	.end	; nie
 
 	; kod błędu, plik istnieje
 	mov	rbx,	VARIABLE_VFS_ERROR_FILE_EXISTS
@@ -136,6 +161,8 @@ cyjon_vfs_file_save:
 	mov	r8,	rdi
 
 	; aktualizuj rekord supła
+	mov	rax,	qword [rsp + VARIABLE_QWORD_SIZE * 0x06]
+	mov	qword [r8 + STRUCTURE_VFS_KNOT.permission],	rax	; uprawnienia do pliku
 	mov	qword [r8 + STRUCTURE_VFS_KNOT.size],	rdx	; rozmiar pliku w Bajtach
 	mov	qword [r8 + STRUCTURE_VFS_KNOT.chars],	rcx	; ilość znaków w nazwie pliku
 	add	rdi,	STRUCTURE_VFS_KNOT.name
@@ -221,6 +248,9 @@ cyjon_vfs_file_save:
 	jmp	.store
 
 .end:
+	; zwróć kod błędu
+	mov	qword [rsp + VARIABLE_QWORD_SIZE * 0x06],	rbx
+
 	; przywróć oryginalne rejestry
 	pop	r9
 	pop	r8
@@ -228,6 +258,7 @@ cyjon_vfs_file_save:
 	pop	rsi
 	pop	rdx
 	pop	rcx
+	pop	rbx
 	pop	rax
 	
 	; powrót z procedury
