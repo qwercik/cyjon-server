@@ -102,6 +102,9 @@ command_table:
 	db	'ls     '
 	dq	text_ls
 
+	db	'moko   '
+	dq	text_moko
+
 	db	'ps     '
 	dq	text_ps
 
