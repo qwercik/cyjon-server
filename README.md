@@ -35,6 +35,7 @@ Jeśli udało ci się nanieść poprawkę, ulepszenie lub coś zupełnie nowego 
 dopisz się do grupy programistów Wataha.net!
 
 - Andrzej Adamczyk, akasei
+- Darek Kwieciński, devport
 
 #License:
 Kod źródlowy systemu operacyjnego jest na licencji Creative Commons BY-NC-ND 4.0
