@@ -11,26 +11,29 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-variable_screen_video_mode_semaphore	db	VARIABLE_FALSE
+VARIABLE_SCREEN_VIDEO_ERROR_ACCESS_DENIED	equ	0x01
+
+variable_screen_video_mode_semaphore		db	VARIABLE_FALSE
+variable_screen_video_user_semaphore		db	VARIABLE_FALSE	; jeden z procesów ma dostęp na wyłączność do przestrzeni pamięci ekranu
 
 ; pozycja kursora na ekranie i w przestrzeni pamięci ekranu
-variable_screen_cursor_indicator	dq	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
+variable_screen_cursor_indicator		dq	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
 
-variable_screen_base_address		dq	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
-variable_screen_base_address_end	dq	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS + VARIABLE_SCREEN_TEXT_MODE_SIZE_IN_BYTES
-variable_screen_size			dq	VARIABLE_SCREEN_TEXT_MODE_SIZE_IN_BYTES
-variable_screen_width			dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH
-variable_screen_width_on_chars		dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH
-variable_screen_width_scan_line		dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH
-variable_screen_height			dq	VARIABLE_SCREEN_TEXT_MODE_HEIGHT
-variable_screen_height_on_chars		dq	VARIABLE_SCREEN_TEXT_MODE_HEIGHT
-variable_screen_depth			dq	VARIABLE_EMPTY
-variable_screen_line_of_chars_in_bytes	dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH * VARIABLE_SCREEN_TEXT_MODE_CHAR_SIZE
-variable_screen_char_width_in_bytes	dq	VARIABLE_SCREEN_TEXT_MODE_CHAR_SIZE
-variable_screen_cursor			dq	VARIABLE_EMPTY
-variable_screen_cursor_width		dq	2	; szerokość kursora w pikselach
+variable_screen_base_address			dq	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS
+variable_screen_base_address_end		dq	VARIABLE_SCREEN_TEXT_MODE_BASE_ADDRESS + VARIABLE_SCREEN_TEXT_MODE_SIZE_IN_BYTES
+variable_screen_size				dq	VARIABLE_SCREEN_TEXT_MODE_SIZE_IN_BYTES
+variable_screen_width				dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH
+variable_screen_width_on_chars			dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH
+variable_screen_width_scan_line			dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH
+variable_screen_height				dq	VARIABLE_SCREEN_TEXT_MODE_HEIGHT
+variable_screen_height_on_chars			dq	VARIABLE_SCREEN_TEXT_MODE_HEIGHT
+variable_screen_depth				dq	VARIABLE_EMPTY
+variable_screen_line_of_chars_in_bytes		dq	VARIABLE_SCREEN_TEXT_MODE_WIDTH * VARIABLE_SCREEN_TEXT_MODE_CHAR_SIZE
+variable_screen_char_width_in_bytes		dq	VARIABLE_SCREEN_TEXT_MODE_CHAR_SIZE
+variable_screen_cursor				dq	VARIABLE_EMPTY
+variable_screen_cursor_width			dq	2	; szerokość kursora w pikselach
 ; siła blokady kursora, im więcej procedur modyfikuje pamięć ekranu tym silniejsza
-variable_screen_cursor_lock_level	dq	VARIABLE_EMPTY
+variable_screen_cursor_lock_level		dq	VARIABLE_EMPTY
 
 ; indeksowana paleta kolorów 32 bitowych na podstawie trybu tekstowego
 table_color_palette_32_bit			dd	0x00000000	; czarny
@@ -1342,40 +1345,6 @@ cyjon_screen_cursor_unlock:
 
 .text_mode:
 	; powrót z procedury
-	ret
-
-cyjon_screen_pixel_set:
-	; zachowaj oryginalne rejestry
-	push	rax
-	push	rcx
-	push	rdx
-	push	rdi
-	push	r8
-
-	; oblicz pozycję piksela w przestrzeni pamięci ekranu
-	mov	rax,	r9	; y
-	xor	rdx,	rdx
-	; * Bajtów na piksel
-	mul	qword [variable_screen_width_scan_line]
-	; * y
-	mov	rcx,	qword [variable_screen_depth]
-	shr	rcx,	VARIABLE_DIVIDE_BY_2
-	shl	r8,	cl
-	add	rax,	r8
-
-	; wskaźnik początku przestrzeni pamięci
-	mov	rdi,	qword [variable_screen_base_address]
-	; wyświetl piksel o podanym kolorze
-	mov	dword [rdi + rax],	ebx
-
-	; przywróć oryginalne rejestry
-	pop	r8
-	pop	rdi
-	pop	rdx
-	pop	rcx
-	pop	rax
-
-	; powrót z proceudry
 	ret
 
 ;===============================================================================

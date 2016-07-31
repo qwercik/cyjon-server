@@ -200,12 +200,12 @@ irq64:
 
 .video:
 	; pobierz właściwości pamięci?
-	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_SCREEN_CLEAR
-	je	irq64_video_screen_clear
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_INFO
+	je	irq64_video_info
 
-	; ustaw piksel o danym kolorze?
-	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_PIXEL_SET
-	je	irq64_video_screen_pixel_set
+	; uzyskaj dostęp do przestrzeni pamięci ekranu?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_ACCESS
+	je	irq64_video_access
 
 	; koniec obsługi przerwania programowego
 	iretq
@@ -332,7 +332,7 @@ irq64_process_memory:
 	mov	rax,	rdi
 	mov	rdi,	VARIABLE_MEMORY_HIGH_ADDRESS
 	sub	rax,	rdi
-	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_USER
 	mov	r11,	cr3
 	call	cyjon_page_map_logical_area
 
@@ -1120,7 +1120,7 @@ irq64_vfs_dir_root:
 	mov	rax,	VARIABLE_MEMORY_HIGH_ADDRESS
 	sub	rdi,	rax
 	mov	rax,	rdi	; ustaw na swoje miejsce - rax => adres
-	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_USER
 	mov	r11,	cr3
 	call	cyjon_page_map_logical_area
 
@@ -1230,7 +1230,7 @@ irq64_vfs_file_read:
 	mov	rax,	VARIABLE_MEMORY_HIGH_ADDRESS
 	sub	rdi,	rax
 	mov	rax,	rdi	; ustaw na swoje miejsce - rax => adres
-	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_SIZE_4KIB
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_USER
 	mov	r11,	cr3
 	call	cyjon_page_map_logical_area
 
@@ -1291,30 +1291,47 @@ irq64_vfs_file_update:
 
 ;===============================================================================
 ;===============================================================================
-irq64_video_screen_clear:
-	; zachowaj oryginalne rejestry
-	push	rax
-	push	rcx
-	push	rdi
-
-	; wyczyść ekran na rządany kolor
-	mov	rax,	rdx
+irq64_video_info:
+	mov	rbx,	qword [variable_screen_base_address]
 	mov	rcx,	qword [variable_screen_size]
-	shr	rcx,	VARIABLE_DIVIDE_BY_4
-	mov	rdi,	qword [variable_screen_base_address]
-	rep	stosd
-
-	; przywróć oryginalne rejestry
-	pop	rdi
-	pop	rcx
-	pop	rax
+	mov	rdx,	qword [variable_screen_width_scan_line]
+	mov	r8,	qword [variable_screen_width]
+	mov	r9,	qword [variable_screen_height]
 
 	; koniec obsługi przerwania programowego
 	iretq
 
 ;-------------------------------------------------------------------------------
-irq64_video_screen_pixel_set:
-	call	cyjon_screen_pixel_set
+irq64_video_access:
+	; zachowaj oryginalne rejestry
+	push	rax
+
+	; sprawdź czy inny proces ma już dostęp do przestrzeni pamięci ekranu
+	cmp	byte [variable_screen_video_user_semaphore],	VARIABLE_TRUE
+	je	.false	; zignoruj
+
+	; zablokuj dostęp do pamięci przestrzeni ekranu dla innych procesów
+	mov	byte [variable_screen_video_user_semaphore],	VARIABLE_TRUE
+
+	; zezwól procesowi na dostęp do przestrzeni pamięci ekranu
+	mov	rax,	cr3
+	mov	bl,	byte [rax]
+	add	bl,	VARIABLE_MEMORY_PAGE_FLAG_USER
+	mov	byte [rax],	bl
+
+	; dostęp udzielony
+	xor	rbx,	rbx
+
+	; koniec
+	jmp	.end
+
+.false:
+	; brak dostępu
+	mov	rbx,	VARIABLE_SCREEN_VIDEO_ERROR_ACCESS_DENIED
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rax
 
 	; koniec obsługi przerwania programowego
 	iretq

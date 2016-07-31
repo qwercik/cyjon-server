@@ -228,23 +228,21 @@ ah 0x05	- obsługa wirtualnego systemu plików
 				0x02 - brak wolnej pamięci
 			rcx - identyfikator pliku w katalogu głównym
 ah 0x06 - obsługa trybu graficznego
-	al 0x00 - wyczyść ekran
+	al 0x00 - pobierz informacje o trybie graficznym
 		WEJŚCIE:
-			edx - 24 bitowy kolor tła
-				np.
-					0x000000 - czarny
-					0xFFFFFF - biały
-		WYJŚCIE:
 			brak
-	al 0x01 - wyświetl piksel
+		WYJŚCIE:
+			rbx - wskaźnik adresu początku przestrzeni pamięci
+			rcx - rozmiar przestrzeni w Bajtach
+			rdx - szerokość rzeczywista ekranu w Bajtach
+			r8 - szerokość w pikselach
+			r9 - wysokość w pikselach
+	al 0x01 - uzyskaj dostęp na wyłączność do przestrzeni pamięci ekranu
 		WEJŚCIE:
-			ebx - 24 bitowy kolor
-				np.
-					0x000000 - czarny
-					0xFFFFFF - biały
-		WYJŚCIE:
 			brak
-
+		WYJŚCIE:
+			rbx - kod błędu, ZERO jeśli OK
+				0x01 - przestrzeń paięci ekranu jest już zajęta
 ah 0x07	- obsługa nośników danych
 	al 0x00	- pobierz tablicę dostępnych nośników
 		WEJŚCIE:

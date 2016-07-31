@@ -329,7 +329,7 @@ recreate_paging:
 	; opisz w tablicach stronicowania jądra przestrzeń zarejestrowaną w binarnej mapie pamięci
 	mov	rax,	VARIABLE_KERNEL_PHYSICAL_ADDRESS
 	; ustaw właściwości rekordów/stron w tablicach stronicowania
-	mov	rbx,	3	; flagi: 4 KiB, Administrator, Odczyt/Zapis, Dostępna
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE	; flagi: 4 KiB, Administrator, Odczyt/Zapis, Dostępna
 	; opisz w tablicach stronicowania jądra przestrzeń o rozmiarze N stron
 	mov	rcx,	qword [variable_binary_memory_map_total]
 	; załaduj adres fizyczny/logiczny tablicy PML4 jądra
@@ -338,10 +338,10 @@ recreate_paging:
 	; mapuj opisaną przestrzeń fizyczną
 	call	cyjon_page_map_physical_area
 
-	; opisz w tablicach stronicowania jądra przestrzeń pamieci ekranu trybu tekstowego 80x25@4
+	; opisz w tablicach stronicowania jądra przestrzeń pamieci ekranu
 	mov	rax,	qword [variable_screen_base_address]
 	; ustaw właściwości rekordów/stron w tablicach stronicowania
-	mov	rbx,	3	; flagi: 4 KiB, Administrator, Odczyt/Zapis, Dostępna
+	mov	rbx,	VARIABLE_MEMORY_PAGE_FLAG_AVAILABLE + VARIABLE_MEMORY_PAGE_FLAG_WRITE + VARIABLE_MEMORY_PAGE_FLAG_USER	; flagi: Użytkownik/Process, Odczyt/Zapis, Dostępna
 	; załaduj adres fizyczny/logiczny tablicy PML4 jądra
 	mov	r11,	rdi
 	; opisz w tablicach stronicowania jądra przestrzeń o rozmiarze N stron
