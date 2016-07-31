@@ -516,8 +516,12 @@ cyjon_screen_print_char:
 	push	rbx
 	push	rcx
 	push	rsi
+	push	r8
+	push	r9
 	push	rdx
-	push	rdi
+
+	; zachowaj wskaźnik
+	mov	r9,	rdi
 
 	; sprawdź czy znaki specjalne
 	cmp	al,	VARIABLE_ASCII_CODE_ENTER
@@ -546,7 +550,7 @@ cyjon_screen_print_char:
 
 	; ustaw kolor i tło wypisywanych znaków
 	mov	ebx,	dword [table_color_palette_32_bit + rbx * VARIABLE_DWORD_SIZE]
-	mov	rdx,	qword [rsp + VARIABLE_QWORD_SIZE]	; przywróć kolor tła
+	mov	rdx,	qword [rsp]	; przywróć kolor tła
 	shr	rdx,	VARIABLE_SHIFT_BY_4
 	mov	edx,	dword [table_color_palette_32_bit + rdx * VARIABLE_DWORD_SIZE]
 
@@ -555,7 +559,17 @@ cyjon_screen_print_char:
 
 	; przetwarzać czcionkę skompresowaną?
 	cmp	byte [matrix_font_semaphore],	VARIABLE_FALSE
-	je	.compressed_next_line
+	je	.compressed_char_N
+
+.char_N:
+	; przywróć wskaźnik
+	mov	rdi,	r9
+
+	; zachowaj ilość kopii znaku do wyświetlenia
+	; wskaźnik do macierzy i wysokość znaku w pikselach
+	push	rcx
+	push	rsi
+	push	r8
 
 .restart:
 	; szerokość znaku w pikselach
@@ -622,15 +636,26 @@ cyjon_screen_print_char:
 	; przesuń wirtualny kursor o jedną pozycję w prawo
 	inc	dword [variable_screen_cursor]
 
-	; przywróć wskaźnik kursora w przestrzeni ekranu
-	pop	rdi
-
 	; zwróć wskaźnik do pozycji następnego znaku w przestrzeni pamięci
-	add	rdi,	qword [variable_screen_char_width_in_bytes]
+	add	r9,	qword [variable_screen_char_width_in_bytes]
+
+	; przywróć ilość kopii znaku do wyświetlenia
+	; wskaźnik do macierzy i wysokość znaku w pikselach
+	pop	r8
+	pop	rsi
+	pop	rcx
+
+	; wyświetl pozostałą ilość
+	loop	.char_N
 
 .end:
+	; zwróć aktualny wskaźnik
+	mov	rdi,	r9
+
 	; przywróć oryginalne rejestry
 	pop	rdx
+	pop	r9
+	pop	r8
 	pop	rsi
 	pop	rcx
 	pop	rbx
@@ -640,6 +665,16 @@ cyjon_screen_print_char:
 	ret
 
 ;===============================================================================
+.compressed_char_N:
+	; przywróć wskaźnik
+	mov	rdi,	r9
+
+	; zachowaj ilość kopii znaku do wyświetlenia
+	; wskaźnik do macierzy i wysokość znaku w pikselach
+	push	rcx
+	push	rsi
+	push	r8
+
 .compressed_next_line:
 	; szerokość matrycy znaku w pikselach
 	mov	rcx,	qword [matrix_font_x_in_pixels]
@@ -693,11 +728,17 @@ cyjon_screen_print_char:
 	; przesuń wirtualny kursor o jedną pozycję w prawo
 	inc	dword [variable_screen_cursor]
 
-	; przywróć wskaźnik kursora w przestrzeni ekranu
-	pop	rdi
-
 	; zwróć wskaźnik do pozycji następnego znaku w przestrzeni pamięci
-	add	rdi,	qword [variable_screen_char_width_in_bytes]
+	add	r9,	qword [variable_screen_char_width_in_bytes]
+
+	; przywróć ilość kopii znaku do wyświetlenia
+	; wskaźnik do macierzy i wysokość znaku w pikselach
+	pop	r8
+	pop	rsi
+	pop	rcx
+
+	; wyświetl pozostałą ilość
+	loop	.compressed_char_N
 
 	; koniec
 	jmp	.end
@@ -711,10 +752,8 @@ cyjon_screen_print_char:
 	mul	dword [variable_screen_cursor + VARIABLE_QWORD_HIGH]
 	add	rax,	qword [variable_screen_base_address]
 
-	; usuń stary wskaźnik kursora w przestrzeni ekranu
-	add	rsp,	VARIABLE_QWORD_SIZE
-	; ustaw nowy
-	mov	rdi,	rax
+	; ustaw nowy wskaźnik
+	mov	r9,	rax
 
 	; ustaw wirtualny kursor na początku ekranu
 	mov	dword [variable_screen_cursor],	VARIABLE_EMPTY
@@ -723,11 +762,8 @@ cyjon_screen_print_char:
 	jmp	.end
 
 .graphics_new_line:
-	; przywróć wskaźnik kursora w przestrzeni ekranu
-	pop	rdi
-
-	; przesuń do następnej linii
-	add	rdi,	qword [variable_screen_line_of_chars_in_bytes]
+	; przesuń wskaźnik do następnej linii
+	add	r9,	qword [variable_screen_line_of_chars_in_bytes]
 
 	; przesuń wirtualny kursor na następną linię
 	inc	dword [variable_screen_cursor + VARIABLE_QWORD_HIGH]
@@ -736,8 +772,8 @@ cyjon_screen_print_char:
 	jmp	.end
 
 .graphics_backspace:
-	; przywróć stary wskaźnik pozycji kursora
-	pop	rdi
+	; przywróć wskaźnik
+	mov	rdi,	r9
 
 	; sprawdź czy kursor znajduje się na początku linii
 	cmp	dword [variable_screen_cursor],	VARIABLE_EMPTY
@@ -777,6 +813,9 @@ cyjon_screen_print_char:
 	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
 	call	cyjon_screen_print_char
 
+	; zachowaj wskaźnik
+	mov	r9,	rdi
+
 	; przywróć pozycje wirtualnego kursora
 	pop	rbx
 	mov	qword [variable_screen_cursor],	rbx
@@ -812,10 +851,12 @@ cyjon_screen_print_string:
 	cmp	rcx,	VARIABLE_EMPTY
 	je	.end	; jeśli nie, zakończ działanie
 
+	; wyczyść
+	xor	rax,	rax
+
 .string:
 	; pobierz znak z ciągu tekstu
 	lodsb	; załaduj do rejestru AL Bajt pod adresem w wskaźniku RSI, zwiększ wskaźnik RSI o jeden
-	and	rax,	VARIABLE_BYTE_MASK
 
 	; sprawdź czy koniec ciągu
 	cmp	al,	VARIABLE_ASCII_CODE_TERMINATOR
@@ -828,14 +869,14 @@ cyjon_screen_print_string:
 	mov	rcx,	1
 	call	cyjon_screen_print_char
 
-	; przywróć licznik
-	pop	rcx
-
 	; zapisz aktualną pozycję kursora w przestrzeni pamięci ekranu
 	mov	qword [variable_screen_cursor_indicator],	rdi
 
 	; sprawdź pozycje kursora
 	call	cyjon_screen_cursor_virtual
+
+	; przywróć licznik
+	pop	rcx
 
 	; wyświetl pozostałe znaki z ciągu
 	dec	rcx
@@ -1013,10 +1054,6 @@ cyjon_screen_scroll:
 	add	rdi,	128
 	dec	rcx
 	jnz	.graphics_loop
-
-;	; przesuń zawartość
-;	shr	rcx,	VARIABLE_DIVIDE_BY_4
-;	rep	movsd
 
 	; wyczyść ostatnią linię
 	mov	rax,	VARIABLE_COLOR_BACKGROUND_DEFAULT

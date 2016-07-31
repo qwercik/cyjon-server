@@ -11,12 +11,6 @@
 ; Use:
 ; nasm - http://www.nasm.us/
 
-VARIABLE_VFS_ERROR_FILE_EXISTS		equ	0x01
-VARIABLE_VFS_ERROR_NO_FREE_SPACE	equ	0x02
-VARIABLE_VFS_ERROR_FILE_NOT_EXISTS	equ	0x03
-VARIABLE_VFS_ERROR_NAME_TO_LONG		equ	0x04
-VARIABLE_VFS_ERROR_NAME_TO_SHORT	equ	0x05
-
 ; SuperBlok
 variable_vfs_superblock	dq	VARIABLE_EMPTY
 			dq	1	; *4096 domyślny rozmiar katalogu głównego
