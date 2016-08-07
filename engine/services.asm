@@ -1319,6 +1319,10 @@ irq64_video_access:
 	add	bl,	VARIABLE_MEMORY_PAGE_FLAG_USER
 	mov	byte [rax],	bl
 
+	; włącz flagę w rekordzie serpentyny procesu
+	mov	rax,	qword [variable_multitasking_serpentine_record_active_address]
+	bts	qword [rax],	STATIC_SERPENTINE_RECORD_BIT_DESKTOP
+
 	; dostęp udzielony
 	xor	rbx,	rbx
 

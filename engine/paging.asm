@@ -602,12 +602,12 @@ cyjon_page_release:
 ;=======================================================================
 ; procedura rejestruje przestrzeń fizyczną znadującą się pod tym samym adresem logicznym
 ; IN:
-;	rax	- adres przestrzeni fizycznej do opisania
-;	rbx	- właściwości rekordów/stron
-;	rcx	- ilość stron do opisania
-;	r11	- adres fizyczny tablicy PML4 jądra/procesu
+;	eax	- adres przestrzeni fizycznej do opisania
+;	ebx	- właściwości rekordów/stron
+;	ecx	- ilość stron do opisania
+;	edi	- adres fizyczny tablicy PML4 jądra/procesu
 ; OUT:
-;	rax
+;	eax
 ;		VARIABLE_EMPTY	- ok
 ;		VARIABLE_TRUE	- brak wystarczającej ilości stron
 ;

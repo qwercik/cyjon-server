@@ -47,6 +47,14 @@ daemon_garbage_collector:
 	pop	rdi
 
 .no_args:
+	; czy proces zajmował na wyłączność dostęp do przestrzeni pamięci ekranu?
+	bt	qword [rdi],	STATIC_SERPENTINE_RECORD_BIT_DESKTOP
+	jnc	.no_desktop
+
+	; zwolnij dostęp
+	mov	byte [variable_screen_video_user_semaphore],	VARIABLE_FALSE
+
+.no_desktop:
 	; wyczyść rekord w tablicy
 	xor	al,	al
 	mov	rcx,	VARIABLE_TABLE_SERPENTINE_RECORD.SIZE

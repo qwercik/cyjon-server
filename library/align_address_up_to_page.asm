@@ -28,7 +28,7 @@ library_align_address_up_to_page:
 
 	; usuń młodszą część adresu
 	and	di,	0xF000
-	; sprawdź czy adres jest identyczny z zachowaną na stosie
+	; sprawdź czy adres jest identyczny z zmienną lokalną
 	cmp	rdi,	qword [rsp]
 	je	.end	; jeśli tak, koniec
 

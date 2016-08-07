@@ -15,7 +15,7 @@
 %include	'config.asm'
 
 %define	VARIABLE_PROGRAM_NAME			x
-%define	VARIABLE_PROGRAM_VERSION		"v0.1"
+%define	VARIABLE_PROGRAM_VERSION		"v0.4"
 
 VARIABLE_X_COLOR_WHITE			equ	0x00FFFFFF
 VARIABLE_X_COLOR_BACKGROUND_DEFAULT	equ	0x003A6EA5
@@ -33,6 +33,8 @@ start:
 	; uzyskaj dostęp na wyłączność do przestrzeni pamięci ekranu
 	mov	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_ACCESS
 	int	STATIC_KERNEL_SERVICE
+	cmp	rbx,	VARIABLE_EMPTY
+	jne	.access_denied
 
 	; pobierz podstawowe informacje o ekranie
 	mov	ax,	VARIABLE_KERNEL_SERVICE_VIDEO_INFO
@@ -58,6 +60,15 @@ start:
 	mov	r11,	100
 	call	x_video_draw_line
 
+.access_denied:
+	mov	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_PRINT_STRING
+	mov	rbx,	VARIABLE_COLOR_DEFAULT
+	mov	rcx,	VARIABLE_FULL
+	mov	rdx,	VARIABLE_COLOR_BACKGROUND_DEFAULT
+	mov	rsi,	text_access_denied
+	int	STATIC_KERNEL_SERVICE
+
+.end:
 	; koniec procesu
 	xor	ax,	ax
 	int	STATIC_KERNEL_SERVICE
@@ -284,3 +295,11 @@ variable_x_video_width			dq	VARIABLE_EMPTY
 variable_x_video_height			dq	VARIABLE_EMPTY
 variable_x_video_size			dq	VARIABLE_EMPTY
 variable_x_video_scanline		dq	VARIABLE_EMPTY
+
+; wczytaj lokalizacje programu systemu
+%push
+	%defstr		%$system_locale		VARIABLE_KERNEL_LOCALE
+	%defstr		%$process_name		VARIABLE_PROGRAM_NAME
+	%strcat		%$include_program_locale,	"software/", %$process_name, "/locale/", %$system_locale, ".asm"
+	%include	%$include_program_locale
+%pop

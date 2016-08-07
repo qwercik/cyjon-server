@@ -42,7 +42,7 @@ stage2_print_number_16bit:
 	xor	dx,	dx
 
 	; sprawdź czy zostało jeszcze coś do przeliczenia
-	cmp	ax,	0x0000
+	cmp	ax,	VARIABLE_EMPTY
 	jne	.calculate	; jeśli tak, powtórz operacje
 
 .print:

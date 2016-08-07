@@ -138,6 +138,7 @@ kernel:
 %include	"engine/programmable_interval_timer.asm"
 %include	"engine/vfs.asm"
 %include	"engine/keyboard.asm"
+%include	"engine/mouse.asm"
 %include	"engine/services.asm"
 %include	"engine/process.asm"
 %include	"engine/network.asm"
