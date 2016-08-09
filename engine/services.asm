@@ -95,6 +95,24 @@ irq64:
 	iretq
 
 .screen:
+	; dostęp do procedur niezależnie od blokady przestrzeni pamięci ekranu
+
+	; pobrać własności ekranu?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_SIZE
+	je	irq64_screen_size
+
+	; ukryć kursor?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_HIDE
+	je	irq64_screen_cursor_hide
+
+	; pokazać kursor?
+	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SHOW
+	je	irq64_screen_cursor_show
+
+	; przestrzeń pamięci ekranu nie dostępna? ------------------------------
+	cmp	byte [variable_screen_video_user_semaphore],	VARIABLE_TRUE
+	je	.end
+
 	; wyczyścić ekran?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CLEAN
 	je	irq64_screen_clear
@@ -119,22 +137,11 @@ irq64:
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SET
 	je	irq64_screen_cursor_set
 
-	; pobrać własności ekranu?
-	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_SIZE
-	je	irq64_screen_size
-
-	; ukryć kursor?
-	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_HIDE
-	je	irq64_screen_cursor_hide
-
-	; pokazać kursor?
-	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_CURSOR_SHOW
-	je	irq64_screen_cursor_show
-
 	; przesunąć część ekranu?
 	cmp	ax,	VARIABLE_KERNEL_SERVICE_SCREEN_SCROLL
 	je	irq64_screen_scroll
 
+.end:
 	; koniec obsługi przerwania programowego
 	iretq
 
