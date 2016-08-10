@@ -102,6 +102,9 @@ kernel:
 	; załaduj podstawową macierz znaków klawiatury
 	call	keyboard
 
+	; pobierz czas z CMOSu
+	call	cmos
+
 	; wykryj dostępne nośniki ATA (tylko dyski twarde)
 	call	ide_initialize
 
@@ -142,6 +145,7 @@ kernel:
 %include	"engine/services.asm"
 %include	"engine/process.asm"
 %include	"engine/network.asm"
+%include	"engine/cmos.asm"
 
 %include	"engine/variables.asm"
 
@@ -167,6 +171,7 @@ kernel:
 %include	"library/compare_string.asm"
 %include	"library/trim.asm"
 %include	"library/translate_size_and_type.asm"
+%include	"library/bcd.asm"
 
 %include	"font/terminus-8x16n-compressed.asm"
 
