@@ -1,3 +1,9 @@
+# Jest to ostatnia wersja z kodem źródłowym podanym dla szerszej publiczności.
+Repozytorium nie będzie już aktualizowane. Projekt nie jest zawieszony, aktualna wersja (14.12.2016) v0.740.
+Changelog https://wataha.net/?show=forum&category=4&thread=35
+
+
+
 #Cyjon
 
 [![Join the chat at https://gitter.im/akasei/Cyjon](https://badges.gitter.im/akasei/Cyjon.svg)](https://gitter.im/akasei/Cyjon?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
