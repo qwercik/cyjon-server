@@ -1,2 +1,0 @@
-text_header	db	"PID     NAZWA", VARIABLE_ASCII_CODE_RETURN
-text_paragraph	db	VARIABLE_ASCII_CODE_RETURN
