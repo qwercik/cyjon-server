@@ -2,7 +2,7 @@
 ; Copyright (C) 2013+ by Andrzej Adamczyk at Wataha.net
 ;===============================================================================
 
-; wartości stałe
+; wartości stałe, specyficzne dla inicjalizacji jądra systemu
 %include "setup/static.asm"
 
 ;===============================================================================
@@ -21,9 +21,10 @@ kernel_init:
 	; zatrzymaj dalsze wykonywanie kodu
 	jmp	$
 
-.kernel_panic:
-	; zatrzymaj dalsze wykonywanie kodu
-	jmp	$
+	;-----------------------------------------------------------------------
+	; jeśli wystąpił błąd podczas inicjalizacji, wyświetl komunikat i zatrzymaj działanie systemu
+	;-----------------------------------------------------------------------
+%include "setup/panic.asm"
 
 ;===============================================================================
 ; wczytaj lokalizacje

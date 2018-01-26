@@ -12,7 +12,7 @@
 
 	; spradź czy istnieją procedury powyżej 0x80000000
 	cmp	eax,	STATIC_CPUID
-	jbe	.kernel_panic
+	jbe	kernel_panic
 
 	; pobierz informacja o procesorze i poszczególnych funkcjach
 	mov	eax,	STATIC_CPUID_EXTENDED
@@ -20,4 +20,4 @@
 
 	; wspierany jest tryb 64 bitowy?
 	bt	edx,	STATIC_CPUID_EXTENDED_FLAG_LM
-	jnc	.kernel_panic
+	jnc	kernel_panic

@@ -30,6 +30,7 @@ kernel_entry:
 
 ; procedury i dane jądra systemu
 %include "kernel/data.asm"
+%include "kernel/video.asm"
 
 ;===============================================================================
 ; wczytaj lokalizacje

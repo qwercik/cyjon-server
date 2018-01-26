@@ -8,7 +8,7 @@
 
 	; czy program rozruchowy udostępnił informacje o trybie karty graficznej?
 	bt	word [ebx + STATIC_STRUCTURE_MULTIBOOT_BOOT_INFORMATION.flags],	STATIC_MULTIBOOT_BOOT_INFORMATION_FLAG_BIT_VIDEO
-	jne	.kernel_panic	; nie, wyświetl komunikat
+	jne	kernel_panic	; nie, wyświetl komunikat
 
 	; ustaw wskaźnik na tablicę SuperVGA Mode Info
 	mov	edi,	dword [ebx + STATIC_STRUCTURE_MULTIBOOT_BOOT_INFORMATION.vbe_mode_info]
@@ -47,3 +47,11 @@
 	shr	eax,	STATIC_DIVIDE_BY_PAGE_SIZE
 	inc	eax
 	mov	dword [variable_kernel_video_size_page],	eax
+
+	;---
+	; wyczyść przestrzeń pamięci karty graficznej
+	mov	eax,	VARIABLE_VIDEO_COLOR_BACKGROUND
+	mov	ecx,	dword [variable_kernel_video_size_byte]
+	shr	ecx,	STATIC_VIDEO_COLOR_DEPTH_IN_BIT
+	mov	edi,	dword [variable_kernel_video_base_address]
+	rep	stosd
