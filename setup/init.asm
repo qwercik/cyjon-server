@@ -18,6 +18,14 @@ kernel_init:
 	;-----------------------------------------------------------------------
 %include "setup/cpu.asm"
 
+	; bochs, debug
+	xchg	bx,bx
+
+	;-----------------------------------------------------------------------
+	; przygotuj binarną mapę pamięci
+	;-----------------------------------------------------------------------
+%include "setup/memory.asm"
+
 	; zatrzymaj dalsze wykonywanie kodu
 	jmp	$
 

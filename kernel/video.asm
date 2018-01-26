@@ -12,7 +12,7 @@ kernel_video_clean:
 	; wyczyść przestrzeń pamięci karty graficznej
 	mov	eax,	VARIABLE_VIDEO_COLOR_BACKGROUND
 	mov	rcx,	qword [variable_kernel_video_size_byte]
-	shr	rcx,	STATIC_VIDEO_COLOR_DEPTH_IN_BIT
+	shr	rcx,	STATIC_VIDEO_COLOR_DEPTH_SHIFT
 	mov	rdi,	qword [variable_kernel_video_base_address]
 	rep	stosd
 

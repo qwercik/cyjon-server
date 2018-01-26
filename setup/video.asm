@@ -16,6 +16,18 @@
 	;---
 	; pobierz niezbędne informacie o trybie graficznym
 
+	; rozmiar piksela (głębia kolorów) w bitach
+	movzx	eax,	byte [edi + STATIC_STRUCTURE_VIDEO_SUPERVGA_MODE_INFO_BLOCK.BitsPerPixel]
+	mov	dword [variable_kernel_video_depth_bit],	eax
+
+	; ustaw komunikat
+	mov	ecx,	text_error_video_color_depth_end - text_error_video_color_depth
+	mov	esi,	text_error_video_color_depth
+
+	; czy głębia kolorów jest obsługiwana?
+	cmp	eax,	STATIC_VIDEO_COLOR_DEPTH_BIT
+	jne	kernel_panic	; nie, wyświetl komunikat
+
 	; adres fizyczny przestrzeni pamięci karty graficznej
 	mov	eax,	dword [edi + STATIC_STRUCTURE_VIDEO_SUPERVGA_MODE_INFO_BLOCK.PhysicalVideoAddress]
 	mov	dword [variable_kernel_video_base_address],	eax
@@ -27,10 +39,6 @@
 	; wysokość ekranu w pikselach
 	movzx	eax,	word [edi + STATIC_STRUCTURE_VIDEO_SUPERVGA_MODE_INFO_BLOCK.YResolution]
 	mov	dword [variable_kernel_video_height_pixel],	eax
-
-	; rozmiar piksela (głębia kolorów) w bitach
-	movzx	eax,	byte [edi + STATIC_STRUCTURE_VIDEO_SUPERVGA_MODE_INFO_BLOCK.BitsPerPixel]
-	mov	dword [variable_kernel_video_depth_bit],	eax
 
 	; szerokość ekranu w pikselach (wraz z uzupełnieniem)
 	movzx	eax,	word [edi + STATIC_STRUCTURE_VIDEO_SUPERVGA_MODE_INFO_BLOCK.BytesPerScanLine]
@@ -52,6 +60,6 @@
 	; wyczyść przestrzeń pamięci karty graficznej
 	mov	eax,	VARIABLE_VIDEO_COLOR_BACKGROUND
 	mov	ecx,	dword [variable_kernel_video_size_byte]
-	shr	ecx,	STATIC_VIDEO_COLOR_DEPTH_IN_BIT
+	shr	ecx,	STATIC_VIDEO_COLOR_DEPTH_SHIFT
 	mov	edi,	dword [variable_kernel_video_base_address]
 	rep	stosd

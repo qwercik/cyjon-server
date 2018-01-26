@@ -16,8 +16,9 @@ STATIC_PAGE_SIZE_BITS					equ	12
 ;===============================================================================
 ; VIDEO
 ;===============================================================================
-STATIC_VIDEO_COLOR_DEPTH_IN_BIT				equ	2
-STATIC_VIDEO_COLOR_DEPTH_IN_BYTE			equ	4
+STATIC_VIDEO_COLOR_DEPTH_SHIFT				equ	2
+STATIC_VIDEO_COLOR_DEPTH_BYTE				equ	4
+STATIC_VIDEO_COLOR_DEPTH_BIT				equ	32
 
 ;===============================================================================
 ; DEFAULT
