@@ -29,12 +29,13 @@ memory_map:
 	jnz	memory_map	; nie, szukaj dalej
 
 	; przygotuj komunikat
+	mov	ecx,	text_error_memory_map_end - text_error_memory_map
 	mov	esi,	text_error_memory_map
 	jmp	kernel_panic	; wyświetl komunikat
 
 .found:
 	; zamień rozmiar na ilość dostępnych stron
-	shr	rax,	DIVIDE_BY_PAGE
+	shr	rax,	DIVIDE_BY_PAGE_shift
 
 	; resztę z dzielenia porzucamy (niepełna strona jest bezużyteczna)
 
@@ -95,7 +96,7 @@ memory_map:
 	; jako, że pobierając dostępną stronę z binarnej mapy pamięci, zawsze otrzymujemy pierwszą wolną
 	; możemy uprościć sposób oznaczenia pierwszych N zajętych
 	mov	rcx,	rdi
-	shr	rcx,	DIVIDE_BY_PAGE
+	shr	rcx,	DIVIDE_BY_PAGE_shift
 
 .remove:
 	; oznacz pierwszą/N-tą stronę jako zajętą

@@ -8,6 +8,16 @@
 	;-----------------------------------------------------------------------
 %include "kernel/init/memory_map.asm"
 
+	;-----------------------------------------------------------------------
+	; utwórz własną Globalną Tablicę Deskryptorów
+	;-----------------------------------------------------------------------
+%include "kernel/init/gdt.asm"
+
+	;~ ;-----------------------------------------------------------------------
+	;~ ; utwórz własne tablice stronicowania
+	;~ ;-----------------------------------------------------------------------
+;~ %include "kernel/init/page.asm"
+
 	; zakończono inicjalizacje środowiska jądra systemu
 	jmp	kernel
 

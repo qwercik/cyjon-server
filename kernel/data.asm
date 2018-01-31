@@ -3,6 +3,13 @@
 ;===============================================================================
 
 ;===============================================================================
+; MEMORY
+;===============================================================================
+; binarna mapa pamięci
+kernel_memory_map_address_start	dq	EMPTY
+kernel_memory_map_address_end	dq	EMPTY
+
+;===============================================================================
 ; PAGE
 ;===============================================================================
 kernel_page_lock_semaphore	db	FALSE	; zablokowany dostęp do stron?
@@ -14,8 +21,20 @@ kernel_page_reserved_count	dq	EMPTY	; ilość stron zablokowanych (np. przez inn
 kernel_page_pml4_address	dq	EMPTY	; tablica PML4 jądra systemu
 
 ;===============================================================================
-; MEMORY
+; GDT
 ;===============================================================================
-; binarna mapa pamięci
-kernel_memory_map_address_start	dq	EMPTY
-kernel_memory_map_address_end	dq	EMPTY
+; wszystkie newralgiczne tablice i nagłówki przechowuj wyrównane do pełnego adresu
+align	QWORD_SIZE_byte,	db	EMPTY
+kernel_gdt_header:
+				dw	KERNEL_PAGE_SIZE_byte	; rozmiar tablicy GDT jądra systemu
+				dq	EMPTY	; adres tablicy GDT jądra systemu
+
+kernel_gdt_tss_selector		dw	KERNEL_STRUCTURE_GDT.tss
+
+; trzymaj wszystkie newralgiczne tablice, wyrównane do pełnego adresu
+align	QWORD_SIZE_byte,	db	EMPTY
+kernel_gdt_tss_table:
+				dd	EMPTY	; zastrzeżone
+				dq	KERNEL_MEMORY_HIGH_VIRTUAL_address - KERNEL_PAGE_SIZE_byte	; RSP0
+		times	92	db	EMPTY	; nie wykorzystywane
+kernel_gdt_tss_table_end:
