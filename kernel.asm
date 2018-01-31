@@ -15,7 +15,7 @@ init:
 	;-----------------------------------------------------------------------
 	; inicjalizuj środowisko jądra systemu
 	;-----------------------------------------------------------------------
-%include "kernel/init.asm"
+	%include "kernel/init.asm"
 
 kernel:
 	; zatrzymaj dalsze wykonywanie kodu
@@ -24,14 +24,14 @@ kernel:
 	;-----------------------------------------------------------------------
 	; dołącz procedury tworzące ciało jądra systemu
 	;-----------------------------------------------------------------------
-%include "kernel/page.asm"
-%include "kernel/data.asm"
+	%include "kernel/page.asm"
+	%include "kernel/data.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz liblioteki wykorzystywane przez jądro systemu
 	;-----------------------------------------------------------------------
-%include "liblary/liblary_page_align_up.asm"
-%include "liblary/liblary_bit_find.asm"
+	%include "liblary/liblary_page_align_up.asm"
+	%include "liblary/liblary_bit_find.asm"
 
 ; koniec kodu jądra systemu wyrównujemy do adresu pełnej strony, wypełniając przestrzeń pustymi bajtami
 align	KERNEL_PAGE_SIZE_byte,	db	EMPTY

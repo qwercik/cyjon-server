@@ -6,17 +6,17 @@
 	; utwórz binarną mapę pamięci za kodem jądra systemu
 	; pod adresem wyrównanym do rozmiaru strony
 	;-----------------------------------------------------------------------
-%include "kernel/init/memory_map.asm"
+	%include "kernel/init/memory_map.asm"
 
 	;-----------------------------------------------------------------------
 	; utwórz własną Globalną Tablicę Deskryptorów
 	;-----------------------------------------------------------------------
-%include "kernel/init/gdt.asm"
+	%include "kernel/init/gdt.asm"
 
 	;~ ;-----------------------------------------------------------------------
 	;~ ; utwórz własne tablice stronicowania
 	;~ ;-----------------------------------------------------------------------
-;~ %include "kernel/init/page.asm"
+	;~ %include "kernel/init/page.asm"
 
 	; zakończono inicjalizacje środowiska jądra systemu
 	jmp	kernel
@@ -24,9 +24,9 @@
 	;-----------------------------------------------------------------------
 	; procedura obsługująca krytyczne błędy podczas inicjalizacji
 	;-----------------------------------------------------------------------
-%include "kernel/panic.asm"
+	%include "kernel/panic.asm"
 
 	;-----------------------------------------------------------------------
 	; komunikaty
 	;-----------------------------------------------------------------------
-%include "kernel/init/locale/en_US.ASCII.asm"
+	%include "kernel/init/locale/en_US.ASCII.asm"
