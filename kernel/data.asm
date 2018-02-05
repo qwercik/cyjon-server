@@ -38,3 +38,15 @@ kernel_gdt_tss_table:
 				dq	KERNEL_MEMORY_HIGH_VIRTUAL_address - KERNEL_PAGE_SIZE_byte	; RSP0
 		times	92	db	EMPTY	; nie wykorzystywane
 kernel_gdt_tss_table_end:
+
+;===============================================================================
+; VIDEO
+;===============================================================================
+kernel_video_base_address	dq	0x0B8000
+kernel_video_size_byte		dq	4000
+kernel_video_size_page		dq	1
+
+;===============================================================================
+; PIC
+;===============================================================================
+kernel_pic_semaphore_bit	dw	MAX_UNSIGNED

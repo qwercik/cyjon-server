@@ -2,19 +2,12 @@
 ; Copyright (C) 2013+ by Andrzej Adamczyk at Wataha.net
 ;===============================================================================
 
-	; przygotuj komunikat
-	mov	ecx,	text_error_gdt_end - text_error_gdt
-	mov	esi,	text_error_gdt
-
 	; zarezerwuj przestrzeń dla Globalnej Tablicy Deskryptorów
 	call	kernel_page_request
-	jc	kernel_panic	; błąd krytyczny
 
 	; wyczyść tablicę GDT i zachowaj jej adres
 	call	kernel_page_dump
 	mov	qword [kernel_gdt_header + KERNEL_STRUCTURE_GDT_HEADER.address],	rdi
-
-	xchg	bx,bx
 
 	;-----------------------------------------------------------------------
 	; utwórz deskryptor NULL
