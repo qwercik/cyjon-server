@@ -40,6 +40,15 @@ kernel_gdt_tss_table:
 kernel_gdt_tss_table_end:
 
 ;===============================================================================
+; IDT
+;===============================================================================
+; wszystkie newralgiczne tablice i nagłówki przechowuj wyrównane do pełnego adresu
+align	QWORD_SIZE_byte,	db	EMPTY
+kernel_idt_header:
+				dw	KERNEL_PAGE_SIZE_byte	; rozmiar tablicy IDT jądra systemu
+				dq	EMPTY	; adres tablicy IDT jądra systemu
+
+;===============================================================================
 ; VIDEO
 ;===============================================================================
 kernel_video_base_address	dq	0x0B8000

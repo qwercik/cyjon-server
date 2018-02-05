@@ -5,6 +5,11 @@
 KERNEL_BASE_address			equ	0x00100000
 
 ;===============================================================================
+; PIT
+;===============================================================================
+KERNEL_PIT_CLOCK_hz			equ	1000
+
+;===============================================================================
 ; MEMORY
 ;===============================================================================
 KERNEL_MEMORY_LOW_address		equ	KERNEL_BASE_address
@@ -38,6 +43,18 @@ KERNEL_PAGE_PML2_SIZE_byte		equ	KERNEL_PAGE_ROW_count * KERNEL_PAGE_PML1_SIZE_by
 KERNEL_PAGE_PML1_SIZE_byte		equ	KERNEL_PAGE_ROW_count * KERNEL_PAGE_SIZE_byte
 
 ;===============================================================================
+; IDT
+;===============================================================================
+KERNEL_IDT_IRQ_HARDWARE_offset				equ	0x20
+
+KERNEL_IDT_IRQ_SHEDULER					equ	0x00
+KERNEL_IDT_IRQ_PS2					equ	0x01
+
+KERNEL_IDT_TYPE_EXCEPTION				equ	0x8E00
+KERNEL_IDT_TYPE_IRQ					equ	0x8F00
+KERNEL_IDT_TYPE_ISR					equ	0xEF00
+
+;===============================================================================
 ; STRUKTURY
 ;===============================================================================
 struc	KERNEL_STRUCTURE_GDT
@@ -50,7 +67,7 @@ struc	KERNEL_STRUCTURE_GDT
 	.SIZE:
 endstruc
 
-struc	KERNEL_STRUCTURE_GDT_HEADER
+struc	KERNEL_STRUCTURE_GDT_OR_IDT_HEADER
 	.limit				resb	2
 	.address			resb	8
 endstruc
@@ -65,6 +82,7 @@ TRUE					equ	1
 FALSE					equ	0
 
 MULTIPLE_BY_8_shift			equ	3
+MULTIPLE_BY_16_shift			equ	4
 
 DIVIDE_BY_8_shift			equ	3
 DIVIDE_BY_PAGE_shift			equ	KERNEL_PAGE_SIZE_shift
@@ -74,9 +92,23 @@ WORD_SIZE_byte				equ	2
 DWORD_SIZE_byte				equ	4
 QWORD_SIZE_byte				equ	8
 
+MOVE_HIGH_TO_AL				equ	8
+MOVE_HIGH_TO_AX				equ	16
+MOVE_HIGH_TO_EAX			equ	32
+
 PORT_PIC_MASTER_command			equ	0x0020
 PORT_PIC_MASTER_data			equ	0x0021
-PORT_PIC_SLAVE_command			equ	0x00A0
-PORT_PIC_SLAVE_data			equ	0x00A1
+PORT_PIT_CLOCK				equ	0x0036
+PORT_PIT_CHANNEL_0_data			equ	0x0040
+PORT_PIT_CHANNEL_1_data			equ	0x0041
+PORT_PIT_CHANNEL_2_data			equ	0x0042
+PORT_PIT_CHANNEL_4_command		equ	0x0043
 PORT_PS2_data				equ	0x0060
 PORT_PS2_command_or_status		equ	0x0064
+PORT_PIC_SLAVE_command			equ	0x00A0
+PORT_PIC_SLAVE_data			equ	0x00A1
+PORT_PIT_SPEAKER			equ	0x00B6
+
+PIT_CRYSTAL				equ	1193182	; Hz
+
+PIC_IRQ_ACCEPT				equ	0x20

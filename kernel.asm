@@ -26,6 +26,7 @@ kernel:
 	;-----------------------------------------------------------------------
 	%include "kernel/page.asm"
 	%include "kernel/data.asm"
+	%include "kernel/idt.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz liblioteki wykorzystywane przez jądro systemu

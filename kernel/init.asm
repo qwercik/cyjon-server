@@ -23,6 +23,16 @@
 	;-----------------------------------------------------------------------
 	%include "kernel/init/pic.asm"
 
+	;-----------------------------------------------------------------------
+	; ustaw częstotliwość wywoływania przerwania sprzętowego zegara
+	;-----------------------------------------------------------------------
+	%include "kernel/init/pit.asm"
+
+	;-----------------------------------------------------------------------
+	; utwórz tablicę deskryptorów przerwań i podłącz podstawowe procedury obsługi
+	;-----------------------------------------------------------------------
+	%include "kernel/init/idt.asm"
+
 	; zakończono inicjalizacje środowiska jądra systemu
 	jmp	kernel
 

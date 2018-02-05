@@ -7,7 +7,7 @@
 
 	; wyczyść tablicę GDT i zachowaj jej adres
 	call	kernel_page_dump
-	mov	qword [kernel_gdt_header + KERNEL_STRUCTURE_GDT_HEADER.address],	rdi
+	mov	qword [kernel_gdt_header + KERNEL_STRUCTURE_GDT_OR_IDT_HEADER.address],	rdi
 
 	;-----------------------------------------------------------------------
 	; utwórz deskryptor NULL
