@@ -13,19 +13,19 @@
 	mov	rax,	kernel_idt_exception_default
 	mov	bx,	KERNEL_IDT_TYPE_EXCEPTION	; typ przerwania - wyjątek
 	mov	rcx,	32	; mapuj wyjątki procesora 0..31
-	call	kernel_idt_update_descriptor
+	call	kernel_idt_update
 
 	; domyślna obsługa przerwania sprzętowego
 	mov	rax,	kernel_idt_hardware_default
 	mov	bx,	KERNEL_IDT_TYPE_IRQ	; typ przerwania - sprzętowe
 	mov	rcx,	16	; mapuj wszystkie przerwania sprzętowe 32..47 (0..15)
-	call	kernel_idt_update_descriptor
+	call	kernel_idt_update
 
 	; domyślna obsługa przerwania programowego
 	mov	rax,	kernel_idt_software_default
 	mov	bx,	KERNEL_IDT_TYPE_ISR	; typ przerwania - programowe
 	mov	rcx,	208	; mapuj pozostałe przerwania programowe 48..255
-	call	kernel_idt_update_descriptor
+	call	kernel_idt_update
 
 	;-----------------------------------------------------------------------
 	; załaduj Tablicę Deskryptorów Przerwań

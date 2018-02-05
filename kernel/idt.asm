@@ -42,7 +42,7 @@ kernel_idt_hardware_default:
 ;	rax - numer przerwania
 ;	rbx - identyfikator przerwania (wyjątek, sprzęt lub proces)
 ;	rdi - adres procedury obsługi przerwania
-kernel_idt_irq_mount:
+kernel_idt_mount:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rbx
@@ -58,7 +58,7 @@ kernel_idt_irq_mount:
 
 	; procedura obsługi przerwania
 	mov	rcx,	1	; podłącz procedurę obsługi pod jeden rekord
-	call	kernel_idt_update_descriptor
+	call	kernel_idt_update
 
 	; przywróć oryginalne rejestry
 	pop	rdi
@@ -77,7 +77,7 @@ kernel_idt_irq_mount:
 ;	rdi - adres rekordu do modyfikacji w Tablicy Deskryptorów Przerwań
 ; wyjście:
 ;	rdi - adres kolejnego rekordu w Tablicy Deskryptorów Przerwań
-kernel_idt_update_descriptor:
+kernel_idt_update:
 	; zachowaj oryginalne rejestry
 	push	rcx
 

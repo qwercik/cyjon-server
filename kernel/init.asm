@@ -19,6 +19,11 @@
 	%include "kernel/init/page.asm"
 
 	;-----------------------------------------------------------------------
+	; utwórz tablicę deskryptorów przerwań i podłącz podstawowe procedury obsługi
+	;-----------------------------------------------------------------------
+	%include "kernel/init/idt.asm"
+
+	;-----------------------------------------------------------------------
 	; przemapuj kontroler przerwań sprzętowych
 	;-----------------------------------------------------------------------
 	%include "kernel/init/pic.asm"
@@ -29,9 +34,14 @@
 	%include "kernel/init/pit.asm"
 
 	;-----------------------------------------------------------------------
-	; utwórz tablicę deskryptorów przerwań i podłącz podstawowe procedury obsługi
+	; podłącz procedurę obsługi przerwania sprzętowego klawiatury
 	;-----------------------------------------------------------------------
-	%include "kernel/init/idt.asm"
+	%include "kernel/init/keyboard.asm"
+
+	;-----------------------------------------------------------------------
+	; utwórz kolejkę zadań i dodaj na jej początek jądro systemu
+	;-----------------------------------------------------------------------
+	%include "kernel/init/task.asm"
 
 	; zakończono inicjalizacje środowiska jądra systemu
 	jmp	kernel

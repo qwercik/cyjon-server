@@ -18,15 +18,21 @@ init:
 	%include "kernel/init.asm"
 
 kernel:
+	; włącz przerwania
+	sti
+
 	; zatrzymaj dalsze wykonywanie kodu
 	jmp	$
 
 	;-----------------------------------------------------------------------
 	; dołącz procedury tworzące ciało jądra systemu
 	;-----------------------------------------------------------------------
-	%include "kernel/page.asm"
 	%include "kernel/data.asm"
+	%include "kernel/page.asm"
 	%include "kernel/idt.asm"
+	%include "kernel/keyboard.asm"
+	%include "kernel/pic.asm"
+	%include "kernel/task.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz liblioteki wykorzystywane przez jądro systemu
