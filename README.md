@@ -8,7 +8,7 @@ Aktualnie nic nie robi :) Całe środowisko zostało przygotowane, przerwania ur
 	nasm.exe -f bin	kernel.asm      -o build\kernel
 
 #### Uruchomienie:
-Do uruchomienia systemu, należy wykorzystać program rozruchowy http://github.com/akasei/Zero.
+Do uruchomienia systemu, należy skorzystać z programu rozruchowego http://github.com/akasei/Zero.
 
 #### Licencja:
-Kod źródłowy programu rozruchowego jest na licencji **GNU General Public License 3.0**
+Kod źródłowy systemu operacyjnego jest na licencji **GNU General Public License 3.0**
