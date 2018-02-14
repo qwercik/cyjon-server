@@ -44,6 +44,14 @@
 	%include "kernel/init/task.asm"
 
 	; zakończono inicjalizacje środowiska jądra systemu
+
+	;-----------------------------------------------------------------------
+	; skonfiguruj pierwszy dostępny interfejs sieciowy
+	;-----------------------------------------------------------------------
+	%include "kernel/init/network.asm"
+
+network_end:
+	; zakończono konfiguracje dostępnego sprzętu
 	jmp	kernel
 
 	;-----------------------------------------------------------------------

@@ -33,6 +33,12 @@ kernel:
 	%include "kernel/keyboard.asm"
 	%include "kernel/pic.asm"
 	%include "kernel/task.asm"
+	%include "kernel/pci.asm"
+
+	;-----------------------------------------------------------------------
+	; dołącz sterowniki urządzeń
+	;-----------------------------------------------------------------------
+	%include "kernel/drivers/network/82540em.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz liblioteki wykorzystywane przez jądro systemu

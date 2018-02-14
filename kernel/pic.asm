@@ -31,3 +31,30 @@ kernel_pic_enable:
 
 	; powrót z procedury
 	ret
+
+;===============================================================================
+; wejście:
+;	cl - numer przerwania do zaakceptowania
+kernel_pic_accept:
+	; zachowaj oryginalne rejestry
+	push	rax
+
+	; poinformuj kontroler PIC o obsłużeniu przerwania sprzętowego
+	mov	al,	PIC_IRQ_ACCEPT
+
+	; numer przerwania dotyczy kontrolera Slave?
+	cmp	cl,	8
+	jb	.no	; nie
+
+	; wyślij do kontrolera Slave
+	out	PORT_PIC_SLAVE_command,	al
+
+.no:
+	; wyślij do kontrolera Master
+	out	PORT_PIC_MASTER_command,	al
+
+	; przywróć oryginalne rejestry
+	pop	rax
+
+	; powrót z procedury
+	ret
