@@ -2,7 +2,8 @@
 Prosty wielozadaniowy system operacyjny, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
 #### Działanie:
-Aktualnie nic nie robi :) Całe środowisko zostało przygotowane, przerwania uruchomione.
+Aktualnie nic wielkiego nie robi :) Całe środowisko zostało przygotowane, przerwania uruchomione.
+- sterownik karty sieciowej odbiera pakiety, ale nie są przetwarzane (porzucam - obsługę udostępnię przy następnych aktualizacjach).
 
 #### Kompilacja:
 	nasm.exe -f bin	kernel.asm      -o build\kernel
