@@ -51,8 +51,8 @@
 	%include "kernel/init/network.asm"
 
 network_end:
-	; zakończono konfiguracje dostępnego sprzętu
-	jmp	kernel
+	; system gotowy do pracy, zwolnij miejsce zajęte przez procedury inicjalizacji
+	jmp	clean
 
 	;-----------------------------------------------------------------------
 	; procedura obsługująca krytyczne błędy podczas inicjalizacji

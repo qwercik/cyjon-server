@@ -626,3 +626,47 @@ kernel_page_map_logical:
 
 	; koniec
 	jmp	.end
+
+;===============================================================================
+; wejście:
+;	rdi - adres strony do zwolnienia
+kernel_page_release:
+	; zachowaj oryginalne rejestry i flagi
+	push	rax
+	push	rcx
+	push	rdx
+	push	rsi
+	push	rdi
+
+	; pobierz adres początku binarnej mapy pamięci
+	mov	rsi,	qword [kernel_memory_map_address_start]
+
+	; przelicz adres strony na numer bitu
+	mov	rax,	rdi
+	sub	rax,	KERNEL_MEMORY_LOW_address
+	shr	rax,	KERNEL_PAGE_SIZE_shift
+
+	; oblicz przesunięcie względem początku binarnej mapy pamięci
+	mov	rcx,	64
+	xor	rdx,	rdx	; wyczyść starszą część
+	div	rcx
+
+	; przesuń wskaźnik na "pakiet"
+	shl	rax,	MULTIPLE_BY_8_shift
+	add	rsi,	rax
+
+	; włącz bit odpowiadający za zwalnianą stronę
+	bts	qword [rsi],	rdx
+
+	; zwiększamy ilość dostępnych stron o jedną
+	inc	qword [kernel_page_free_count]
+
+	; przywróć oryginalne rejestry i flagi
+	pop	rdi
+	pop	rsi
+	pop	rdx
+	pop	rcx
+	pop	rax
+
+	; powrót z procedury
+	ret
