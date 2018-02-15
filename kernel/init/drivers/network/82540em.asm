@@ -212,8 +212,8 @@ driver_nic_82540em:
 	; pobierz i zapisz MAC kontrolera
 	mov	eax,	dword [rsi + NIC_82540EM_RA]
 	mov	dword [driver_variable_nic_82540em_mac],	eax
-	mov	eax,	dword [rsi + NIC_82540EM_RA + STRUCTURE_MAC.4]
-	mov	dword [driver_variable_nic_82540em_mac + STRUCTURE_MAC.4],	eax
+	mov	eax,	dword [rsi + NIC_82540EM_RA + NETWORK_STRUCTURE_MAC.4]
+	mov	dword [driver_variable_nic_82540em_mac + NETWORK_STRUCTURE_MAC.4],	eax
 
 	; kontynuuj
 	jmp	.ready
@@ -226,21 +226,21 @@ driver_nic_82540em:
 	mov	eax,	dword [rsi + NIC_82540EM_EERD]
 	shr	eax,	MOVE_HIGH_TO_AX
 	; zachowaj
-	mov	word [driver_variable_nic_82540em_mac + STRUCTURE_MAC.0],	ax
+	mov	word [driver_variable_nic_82540em_mac + NETWORK_STRUCTURE_MAC.0],	ax
 
 	; odczytaj zawartość rejestru pod adresem 0x01
 	mov	dword [rsi + NIC_82540EM_EERD],	0x00000101
 	mov	eax,	dword [rsi + NIC_82540EM_EERD]
 	shr	eax,	MOVE_HIGH_TO_AX
 	; zachowaj
-	mov	word [driver_variable_nic_82540em_mac + STRUCTURE_MAC.2],	ax
+	mov	word [driver_variable_nic_82540em_mac + NETWORK_STRUCTURE_MAC.2],	ax
 
 	; odczytaj zawartość rejestru pod adresem 0x02
 	mov	dword [rsi + NIC_82540EM_EERD],	0x00000201
 	mov	eax,	dword [rsi + NIC_82540EM_EERD]
 	shr	eax,	MOVE_HIGH_TO_AX
 	; zachowaj
-	mov	word [driver_variable_nic_82540em_mac + STRUCTURE_MAC.4],	ax
+	mov	word [driver_variable_nic_82540em_mac + NETWORK_STRUCTURE_MAC.4],	ax
 
 .ready:
 	; wyłącz wszystkie typy przerwań na kontrolerze

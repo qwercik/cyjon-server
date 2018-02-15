@@ -73,3 +73,4 @@ kernel_task_queue			dq	EMPTY
 kernel_task_count			dq	EMPTY
 kernel_task_count_left			dq	EMPTY
 kernel_task_active			dq	EMPTY
+kernel_task_leave			db	FALSE

@@ -4,7 +4,7 @@
 
 ;===============================================================================
 kernel_task:
-	; zachowaj oryginalne rejestry na stos kontekstu procesu/jądra
+	; zachowaj oryginalny rejestr na stosie kontekstu procesu/jądra
 	push	rax
 	push	rbx
 	push	rcx
