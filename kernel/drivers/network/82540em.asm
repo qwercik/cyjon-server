@@ -17,6 +17,7 @@ kernel_nic_82540em_irq:
 
 	; zachowaj oryginalne rejestry
 	push	rax
+	push	rbx
 	push	rcx
 	push	rsi
 	push	rdi
@@ -35,18 +36,21 @@ kernel_nic_82540em_irq:
 	bt	eax,	NIC_82540EM_ICR_RXT0
 	jnc	.end	; nie
 
+	; zwiększ licznik pakietów przychodzących
+	inc	qword [kernel_network_rx_count]
+
 	; pobierz z deskryptora pakietów przychodzących interfejsu sieciowego adres bufora przechowującego pakiet
-	mov	rsi,	qword [driver_variable_nic_82540em_rx]
-	mov	rsi,	qword [rsi]
+	mov	rbx,	qword [driver_variable_nic_82540em_rx]
+	mov	rbx,	qword [rbx]
 
 	; odbieramy wszystkie pakiety? (nie interesuje nas do kogo były kierowane)
 	cmp	byte [driver_variable_nic_82540em_promiscious_mode],	TRUE
 	je	.receive	; tak
 
 	; pobierz adres MAC z ramki Ethernet (docelowy)
-	mov	eax,	dword [rsi + NETWORK_FRAME_ETHERNET_FIELD_TARGET + NETWORK_STRUCTURE_MAC.2]
+	mov	eax,	dword [rbx + NETWORK_FRAME_ETHERNET_FIELD_TARGET + NETWORK_STRUCTURE_MAC.2]
 	shl	rax,	MOVE_AX_TO_HIGH
-	or	ax,	word [rsi + NETWORK_FRAME_ETHERNET_FIELD_TARGET]
+	or	ax,	word [rbx + NETWORK_FRAME_ETHERNET_FIELD_TARGET]
 
 	; czy pakiet jest skierowany do każdego?
 	mov	rcx,	NETWORK_MAC_mask
@@ -62,7 +66,61 @@ kernel_nic_82540em_irq:
 	cmp	byte [daemon_variable_ethernet_semaphore],	FALSE
 	je	.receive_end	; nie, zignoruj pakiet
 
-	; cdn.
+	; odszukaj wolne miejsce w buforze demona ethernet
+	mov	rsi,	qword [daemon_variable_ethernet_cache]
+	mov	rcx,	(DAEMON_ETHERNET_CACHE_size * KERNEL_PAGE_SIZE_byte) >> DIVIDE_BY_8_shift
+
+.search:
+	; koniec bufora?
+	dec	rcx
+	js	.receive_end	; tak, porzuć pakiet
+
+	; wolne miejsce w buforze?
+	cmp	qword [rsi + rcx * QWORD_SIZE_byte],	EMPTY
+	jne	.search	; nie, szukaj dalej
+
+	; przygotuj miejsce pod pakiet
+	call	kernel_page_request
+	jc	.receive_end	; brak miejsca, porzuć pakiet
+
+	; do demona ethernet przekazujemy tylko pakiety zawierające ramki ARP lub IP
+	; limit ten zostanie zniesiony, gdy demon ethernet będzie potrawił więcej
+
+	; domyślny rozmiar pakietu zawierającego ramkę ARP
+	mov	rcx,	NETWORK_FRAME_ARP_SIZE + NETWORK_FRAME_ETHERNET_SIZE
+
+	; pakiet zawiera ramkę typu ARP?
+	cmp	word [rbx + NETWORK_FRAME_ETHERNET_FIELD_TYPE],	NETWORK_FRAME_ETHERNET_FIELD_TYPE_ARP
+	je	.load	; tak, załaduj do bufora
+
+	; pakiet zawiera ramkę typu IP?
+	cmp	word [rbx + NETWORK_FRAME_ETHERNET_FIELD_TYPE],	NETWORK_FRAME_ETHERNET_FIELD_TYPE_IP
+	jne	.receive_end	; nie, porzuć pakiet
+
+	; ustal rozmiar pakietu
+	movzx	rcx,	word [rbx + NETWORK_FRAME_ETHERNET_SIZE + NETWORK_FRAME_IP_FIELD_TOTAL_LENGTH]
+	rol	cx,	REPLACE_AL_WITH_HIGH
+	add	rcx,	NETWORK_FRAME_ETHERNET_SIZE
+
+	; jeśli pakiet nie przekracza limitu obśługiwanego rozmiaru, załaduj do bufora demona ethernet
+	cmp	rcx,	KERNEL_PAGE_SIZE_byte
+	ja	.receive_end	; limit przekroczony, porzuć pakiet
+
+.load:
+	; zachowaj wskaźnik wpisu w buforze demona ethernet i wskaźnik docelowy pakietu
+	push	rsi
+	push	rdi
+
+	; kopiuj pakiet
+	mov	rsi,	rbx
+	rep	movsb
+
+	; przywróć obydwa wskaźniki
+	pop	rdi
+	pop	rsi
+
+	; poinformuj demona ethernet o przekazanym pakiecie
+	mov	qword [rsi],	rdi
 
 .receive_end:
 	; poinformuj kontroler o zakończeniu przetwarzania pakietu
@@ -79,6 +137,7 @@ kernel_nic_82540em_irq:
 	pop	rdi
 	pop	rsi
 	pop	rcx
+	pop	rbx
 	pop	rax
 
 	; włącz przerwania

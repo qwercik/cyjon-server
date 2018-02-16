@@ -135,6 +135,8 @@ MOVE_AL_TO_HIGH						equ	8
 MOVE_AX_TO_HIGH						equ	16
 MOVE_EAX_TO_HIGH					equ	32
 
+REPLACE_AL_WITH_HIGH					equ	8
+REPLACE_AX_WITH_HIGH					equ	16
 REPLACE_EAX_WITH_HIGH					equ	32
 
 QWORD_SIZE_byte						equ	8

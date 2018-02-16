@@ -77,3 +77,9 @@ kernel_task_count			dq	EMPTY
 kernel_task_count_left			dq	EMPTY
 kernel_task_active			dq	EMPTY
 kernel_task_pid_next			dq	1
+
+;===============================================================================
+; NETWORK
+;===============================================================================
+kernel_network_rx_count			dq	EMPTY
+kernel_network_tx_count			dq	EMPTY
