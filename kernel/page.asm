@@ -43,7 +43,7 @@ kernel_page_request:
 	mov	rdi,	qword [kernel_memory_map_address_end]
 
 	; zwróć numer bezwzględny bitu opisującego wolną/dostępną stronę
-	call	liblary_bit_find
+	call	library_bit_find
 
 	; zamień bezwzględny numer bitu na względny adres strony
 	shl	rax,	KERNEL_PAGE_SIZE_shift

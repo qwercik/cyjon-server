@@ -90,7 +90,7 @@ memory_map:
 	; oznacz strony jako wykorzystane, w których znajduje się kod jądra systemu i binarna mapa pamięci
 
 	; wylicz rozmiar wykorzystanej przestrzeni
-	call	liblary_page_align_up
+	call	library_page_align_up
 	sub	rdi,	KERNEL_BASE_address
 
 	; jako, że pobierając dostępną stronę z binarnej mapy pamięci, zawsze otrzymujemy pierwszą wolną

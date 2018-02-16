@@ -51,6 +51,12 @@
 	%include "kernel/init/network.asm"
 
 network_end:
+	;-----------------------------------------------------------------------
+	; uruchom niezbędne usługi do obsługi sprzętu
+	;-----------------------------------------------------------------------
+	%include "kernel/init/daemons.asm"
+
+daemons_end:
 	; system gotowy do pracy, zwolnij miejsce zajęte przez procedury inicjalizacji
 	jmp	clean
 

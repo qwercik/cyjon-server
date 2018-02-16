@@ -58,7 +58,11 @@ kernel_nic_82540em_irq:
 	jne	.receive_end	; nie
 
 .receive:
-	; jeszcze nie odbieramy pakietów
+	; demon Ethernet jest gotowy?
+	cmp	byte [daemon_variable_ethernet_semaphore],	FALSE
+	je	.receive_end	; nie, zignoruj pakiet
+
+	; cdn.
 
 .receive_end:
 	; poinformuj kontroler o zakończeniu przetwarzania pakietu
