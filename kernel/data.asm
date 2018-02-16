@@ -69,7 +69,11 @@ kernel_pic_semaphore_bit		dw	MAX_UNSIGNED
 ;===============================================================================
 ; TASK
 ;===============================================================================
-kernel_task_queue			dq	EMPTY
+kernel_task_semaphore			db	FALSE
+
+kernel_task_queue_address		dq	EMPTY
+
 kernel_task_count			dq	EMPTY
 kernel_task_count_left			dq	EMPTY
 kernel_task_active			dq	EMPTY
+kernel_task_pid_next			dq	1

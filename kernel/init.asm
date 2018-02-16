@@ -56,7 +56,6 @@ network_end:
 	;-----------------------------------------------------------------------
 	%include "kernel/init/daemons.asm"
 
-daemons_end:
 	; system gotowy do pracy, zwolnij miejsce zajęte przez procedury inicjalizacji
 	jmp	clean
 
@@ -66,6 +65,6 @@ daemons_end:
 	%include "kernel/panic.asm"
 
 	;-----------------------------------------------------------------------
-	; komunikaty
+	; dane wykorzystywane przez procedury inicjalizacyjne
 	;-----------------------------------------------------------------------
-	%include "kernel/init/locale/en_US.ASCII.asm"
+	%include "kernel/init/data.asm"

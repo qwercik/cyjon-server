@@ -2,10 +2,14 @@
 ; Copyright (C) 2013+ by Andrzej Adamczyk at Wataha.net
 ;===============================================================================
 
-daemon_variable_ethernet_semaphore	db	FALSE
+; komunikaty
+%include "kernel/init/locale/en_US.ASCII.asm"
 
-;===============================================================================
-daemon_ethernet:
-	; zatrzymaj dalsze wykonywanie kodu
-	jmp	daemon_ethernet
-	
+list_daemons:
+	; lista demonów
+	dq	daemon_ethernet	; wskaźnik wejścia
+	dq	16	; ilość znaków w nazwie
+	db	"network ethernet"
+
+	; koniec listy
+	dq	EMPTY

@@ -7,7 +7,7 @@
 
 	; wyczyść i zapamiętaj adres kolejki
 	call	kernel_page_dump
-	mov	qword [kernel_task_queue],	rdi
+	mov	qword [kernel_task_queue_address],	rdi
 
 	; połącz koniec z początkiem kolejki (RoundRobin)
 	mov	qword [rdi + KERNEL_STRUCTURE_BLOCK.link],	rdi

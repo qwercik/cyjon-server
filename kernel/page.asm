@@ -670,3 +670,100 @@ kernel_page_release:
 
 	; powrót z procedury
 	ret
+
+;===============================================================================
+; wejście:
+;	rsi - adres źródłowy tablicy PML4
+;	rdi - adres docelowy tablicy PML4
+; uwagi:
+;	procedura łączy dwie tablice PML4 (z uwzględenieniem "pod tablic")
+;	zachowując oryginalne rekordy tablicy docelowej!
+kernel_page_merge:
+	; zachowaj oryginalne rejestry
+	push	rbx
+
+	; poziom 4 tablicy
+	mov	rbx,	4
+
+.inner:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rbx
+	push	rcx
+	push	rsi
+	push	rdi
+
+	; czy tablica jest kopią oryginału?
+	cmp	rdi,	rsi
+	je	.copy	; tak, nie wykonuj syzyfowej pracy
+
+	; zmniejsz poziom przetwarzanej tablicy
+	dec	rbx
+
+	; ilość rekordów na jedną tablicę
+	mov	rcx,	KERNEL_PAGE_ROW_count
+
+.loop:
+	; sprawdź czy rekord źródłowy istnieje
+	cmp	qword [rsi],	EMPTY
+	je	.next	; brak
+
+	; sprawdź czy rekord docelowy zajęty
+	cmp	qword [rdi],	EMPTY
+	ja	.compare	; zajęty
+
+	; skopiuj rekord do tablicy docelowej
+	mov	rax,	qword [rsi]
+	mov	qword [rdi],	rax
+
+.compare:
+	; brak kolejnych poziomów?
+	cmp	rbx,	EMPTY
+	je	.next	; tak, brak tablic innego poziomu
+
+	; zachowaj oryginalne rejestry
+	push	rsi
+	push	rdi
+
+	; załaduj adres tablicy źródłowej i docelowej
+	mov	rsi,	qword [rsi]
+	mov	rdi,	qword [rdi]
+
+	; usuń właściwości rekordów
+	and	rsi,	KERNEL_PAGE_mask
+	and	rdi,	KERNEL_PAGE_mask
+
+	; połącz zawartość tablic
+	call	.inner
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rsi
+
+.next:
+	; następny rekord tablicy
+	add	rsi,	QWORD_SIZE_byte
+	add	rdi,	QWORD_SIZE_byte
+
+	; kontynuuj
+	dec	rcx
+	jnz	.loop
+
+.copy:
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rsi
+	pop	rcx
+	pop	rbx
+	pop	rax
+
+	; przetworzyliśmy poziom 4?
+	cmp	rbx,	4
+	jne	.return	; nie
+
+	; przywróć oryginalne rejestry
+	pop	rbx
+
+.return:
+	; powrót z procedury
+	ret
