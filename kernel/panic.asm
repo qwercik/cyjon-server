@@ -3,5 +3,8 @@
 ;===============================================================================
 
 kernel_panic:
+	; wyświetl komunikat
+	call	kernel_video_string
+
 	; zatrzymaj dalsze wykonywanie kodu
 	jmp	$

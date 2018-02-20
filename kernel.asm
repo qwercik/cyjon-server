@@ -59,6 +59,7 @@ kernel:
 	%include "kernel/pic.asm"
 	%include "kernel/task.asm"
 	%include "kernel/pci.asm"
+	%include "kernel/video.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz sterowniki urządzeń
@@ -71,7 +72,7 @@ kernel:
 	%include "kernel/daemons/ethernet.asm"
 
 	;-----------------------------------------------------------------------
-	; dołącz liblioteki wykorzystywane przez jądro systemu
+	; dołącz biblioteki wykorzystywane przez jądro systemu
 	;-----------------------------------------------------------------------
 	%include "library/library_page_align_up.asm"
 	%include "library/library_bit_find.asm"

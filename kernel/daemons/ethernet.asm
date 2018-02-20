@@ -39,18 +39,21 @@ daemon_ethernet:
 	je	.loop	; nie
 
 .found:
-	; zachowaj oryginalne rejestry
-	push	rcx
-	push	rsi
-
 	; pobierz wskaźnik do pakietu
-	mov	rsi,	qword [rsi]
+	mov	rdi,	qword [rsi]
 
-	; cdn.
+	; pakiet zawiera ramkę typu ARP?
+	cmp	word [rdi + NETWORK_FRAME_ETHERNET_FIELD_TYPE],	NETWORK_FRAME_ETHERNET_FIELD_TYPE_ARP
+	je	.arp	; tak
 
-	; przywróć oryginalne rejestry
-	pop	rsi
-	pop	rcx
+	; nie znany typ pakietu, porzuć
+
+.clean:
+	; zwolnij przestrzeń zajętą przez pakiet
+	call	kernel_page_release
+
+	; usuń wpis w buforze demona ethernet
+	mov	qword [rsi],	EMPTY
 
 	; pakiet obsłużony, przetwórz następny
 	jmp	.reload
@@ -63,4 +66,7 @@ daemon_ethernet:
 
 	; zatrzymaj dalsze wykonywanie kodu
 	jmp	$
-	
+
+.arp:
+	; obsłużono pakiet arp
+	jmp	.clean

@@ -57,9 +57,14 @@ kernel_idt_header:
 ;===============================================================================
 ; VIDEO
 ;===============================================================================
-kernel_video_base_address		dq	0x0B8000
-kernel_video_size_byte			dq	4000
-kernel_video_size_page			dq	1
+kernel_video_base_address		dq	VIDEO_TEXT_MODE_BASE_address
+kernel_video_size_byte			dq	VIDEO_TEXT_MODE_SIZE_byte
+kernel_video_size_page			dq	VIDEO_TEXT_MODE_SIZE_page
+kernel_video_width_char			dq	VIDEO_TEXT_MODE_WIDTH_char
+
+kernel_video_cursor_indicator		dq	VIDEO_TEXT_MODE_BASE_address
+
+kernel_video_char_color			db	VIDEO_TEXT_MODE_COLOR_FOREGROUND_GRAY_LIGHT
 
 ;===============================================================================
 ; PIC
