@@ -3,7 +3,8 @@ Prosty wielozadaniowy system operacyjny, napisany w języku asemblera dla proces
 
 #### Działanie:
 Aktualnie nic wielkiego nie robi :) Całe środowisko zostało przygotowane, przerwania uruchomione.
-- sterownik karty sieciowej odbiera pakiety, ale nie są przetwarzane (porzucam - obsługę udostępnię przy następnych aktualizacjach).
+- sterownik karty sieciowej odbiera pakiety, ale nie są przetwarzane (porzucam - obsługę udostępnię przy następnych aktualizacjach),
+- częściowa obsługa klawiatury (nie wszystkie klawisze zaimplementowane), efekt korzystania bezpośrednio na ekranie.
 
 #### Kompilacja:
 	nasm.exe -f bin	kernel.asm      -o build\kernel
