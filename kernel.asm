@@ -46,8 +46,51 @@ kernel:
 	; włącz przerwania
 	sti
 
+	; pobierz pozycje kursora w przestrzeni pamięci ekranu
+	mov	rdi,	qword [kernel_video_cursor_indicator]
+
+.loop:
+	; pobierz naciśnięty klawisz z bufora klawiatury
+	call	kernel_keyboard_read
+
+	; brak klawisza?
+	test	ax,	ax
+	jz	.loop	; zignoruj
+
+	; klawisz enter?
+	cmp	ax,	ASCII_ENTER
+	je	.enter	; tak
+
+	; klawisz backspace?
+	cmp	ax,	ASCII_BACKSPACE
+	je	.show	; tak
+
+	; czy znak ASCII znajduje się w zakresie znaków interpunkcyjnych i alfabetu łacińskiego?
+	cmp	ax,	ASCII_SPACE
+	jb	.loop	; nie
+	cmp	ax,	ASCII_TILDE
+	ja	.loop	; nie
+
+	; wyświetl
+	jmp	.show
+
+.enter:
+	; zamień na znak nowej linii
+	mov	ax,	ASCII_NEW_LINE
+
+.show:
+	; wyświetl klawisz na ekran
+	mov	ah,	byte [kernel_video_char_color]
+	call	kernel_video_char
+
+	; zachowaj nową pozycję wskaźnika kursora w przestrzeni pamięci ekranu
+	mov	qword [kernel_video_cursor_indicator],	rdi
+
+	; aktualizuj pozycje kursora sprzętowego na ekranie
+	call	kernel_video_cursor
+
 	; zatrzymaj dalsze wykonywanie kodu
-	jmp	$
+	jmp	.loop
 
 	;-----------------------------------------------------------------------
 	; dołącz procedury tworzące ciało jądra systemu
