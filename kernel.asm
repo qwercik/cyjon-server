@@ -11,7 +11,6 @@
 ; położenie kodu w pamięci fizycznej
 [ORG KERNEL_BASE_address]
 
-;===============================================================================
 init:
 	;-----------------------------------------------------------------------
 	; inicjalizuj środowisko jądra systemu
@@ -21,76 +20,23 @@ init:
 ; koniec kodu inicjalizującego jądro systemu wyrównujemy do adresu pełnej strony, wypełniając przestrzeń pustymi bajtami
 align	KERNEL_PAGE_SIZE_byte,	db	EMPTY
 
-;===============================================================================
 clean:
-	; oblicz ilość stron do zwolnienia
-	mov	rcx,	clean - init
-	shr	rcx,	DIVIDE_BY_PAGE_shift
+	;-----------------------------------------------------------------------
+	; zwolnij przestrzeń zajętą przez procedury inicjalizacji
+	;-----------------------------------------------------------------------
+	%include "kernel/clean.asm"
 
-	; zacznij od strony pod adresem
-	mov	rdi,	init
-
-.loop:
-	; zwolnij stronę
-	call	kernel_page_release
-
-	; następny adres strony
-	add	rdi,	KERNEL_PAGE_SIZE_byte
-
-	; pozostały strony do zwolnienia?
-	dec	rcx
-	jnz	.loop	; tak
-
-;===============================================================================
 kernel:
+	; wyświetl informacje o gotowości do działania
+	mov	rcx,	kernel_string_welcome_end - kernel_string_welcome
+	mov	rsi,	kernel_string_welcome
+	call	kernel_video_string
+
 	; włącz przerwania
 	sti
 
-	; pobierz pozycje kursora w przestrzeni pamięci ekranu
-	mov	rdi,	qword [kernel_video_cursor_indicator]
-
-.loop:
-	; pobierz naciśnięty klawisz z bufora klawiatury
-	call	kernel_keyboard_read
-
-	; brak klawisza?
-	test	ax,	ax
-	jz	.loop	; zignoruj
-
-	; klawisz enter?
-	cmp	ax,	ASCII_ENTER
-	je	.enter	; tak
-
-	; klawisz backspace?
-	cmp	ax,	ASCII_BACKSPACE
-	je	.show	; tak
-
-	; czy znak ASCII znajduje się w zakresie znaków interpunkcyjnych i alfabetu łacińskiego?
-	cmp	ax,	ASCII_SPACE
-	jb	.loop	; nie
-	cmp	ax,	ASCII_TILDE
-	ja	.loop	; nie
-
-	; wyświetl
-	jmp	.show
-
-.enter:
-	; zamień na znak nowej linii
-	mov	ax,	ASCII_NEW_LINE
-
-.show:
-	; wyświetl klawisz na ekran
-	mov	ah,	byte [kernel_video_char_color]
-	call	kernel_video_char
-
-	; zachowaj nową pozycję wskaźnika kursora w przestrzeni pamięci ekranu
-	mov	qword [kernel_video_cursor_indicator],	rdi
-
-	; aktualizuj pozycje kursora sprzętowego na ekranie
-	call	kernel_video_cursor
-
 	; zatrzymaj dalsze wykonywanie kodu
-	jmp	.loop
+	jmp	$
 
 	;-----------------------------------------------------------------------
 	; dołącz procedury tworzące ciało jądra systemu
@@ -103,6 +49,7 @@ kernel:
 	%include "kernel/task.asm"
 	%include "kernel/pci.asm"
 	%include "kernel/video.asm"
+	%include "kernel/font.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz sterowniki urządzeń
@@ -113,12 +60,23 @@ kernel:
 	; dołącz demony
 	;-----------------------------------------------------------------------
 	%include "kernel/daemons/ethernet.asm"
+	%include "kernel/daemons/shell.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz biblioteki wykorzystywane przez jądro systemu
 	;-----------------------------------------------------------------------
 	%include "library/library_page_align_up.asm"
 	%include "library/library_bit_find.asm"
+
+	;-----------------------------------------------------------------------
+	; dołącz lokalizacje
+	;-----------------------------------------------------------------------
+	%push
+	%defstr		%$system_locale			SYSTEM_LOCALE
+	%defstr		%$system_charset		SYSTEM_CHARSET
+	%strcat		%$include_system_locale,	"kernel/locale/", %$system_locale, ".", %$system_charset, ".asm"
+	%include	%$include_system_locale
+	%pop
 
 ; koniec kodu jądra systemu wyrównujemy do adresu pełnej strony, wypełniając przestrzeń pustymi bajtami
 align	KERNEL_PAGE_SIZE_byte,	db	EMPTY

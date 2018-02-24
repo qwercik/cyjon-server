@@ -5,6 +5,12 @@
 KERNEL_BASE_address					equ	0x00100000
 
 ;===============================================================================
+; LOCALE
+;===============================================================================
+%define	SYSTEM_LOCALE						en_US
+%define	SYSTEM_CHARSET						ASCII
+
+;===============================================================================
 ; PIT
 ;===============================================================================
 KERNEL_PIT_CLOCK_hz					equ	1000
@@ -93,32 +99,13 @@ KERNEL_KEYBOARD_RELEASE_SHIFT_RIGHT			equ	0x80 + KERNEL_KEYBOARD_PRESS_SHIFT_RIG
 KERNEL_KEYBOARD_RELEASE_ALT				equ	0x80 + KERNEL_KEYBOARD_PRESS_ALT
 
 ;===============================================================================
+; VIDEO
+;===============================================================================
+KERNEL_VIDEO_COLOR_DEPTH_shift				equ	2
+
+;===============================================================================
 ; STAŁE POWSZECHNE
 ;===============================================================================
-VIDEO_TEXT_MODE_BASE_address				equ	0x000B8000
-VIDEO_TEXT_MODE_SIZE_byte				equ	VIDEO_TEXT_MODE_WIDTH_char * VIDEO_TEXT_MODE_HEIGHT_char * VIDEO_TEXT_MODE_DEPTH_byte
-VIDEO_TEXT_MODE_SIZE_page				equ	1
-VIDEO_TEXT_MODE_WIDTH_char				equ	80
-VIDEO_TEXT_MODE_HEIGHT_char				equ	25
-VIDEO_TEXT_MODE_DEPTH_byte				equ	0x02
-
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_BLACK			equ	0x00
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_BLUE			equ	0x01
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_GREEN			equ	0x02
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_CYAN			equ	0x03
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_RED			equ	0x04
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_MAGENTA		equ	0x05
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_YELLOW			equ	0x06
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_GRAY_LIGHT		equ	0x07
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_GRAY			equ	0x08
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_BLUE_LIGHT		equ	0x09
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_GREEN_LIGHT		equ	0x0A
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_CYAN_LIGHT		equ	0x0B
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_RED_LIGHT		equ	0x0C
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_MAGENTA_LIGHT		equ	0x0D
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_YELLOW_LIGHT		equ	0x0E
-VIDEO_TEXT_MODE_COLOR_FOREGROUND_WHITE			equ	0x0F
-
 ASCII_TERMINATOR					equ	0x00
 ASCII_ENTER						equ	0x0D
 ASCII_NEW_LINE						equ	0x0A
@@ -348,6 +335,23 @@ NETWORK_FRAME_TCP_FIELD_URGENT_POINTER			equ	NETWORK_FRAME_TCP_FIELD_CHECKSUM + 
 NETWORK_FRAME_TCP_FIELD_OPTIONS				equ	NETWORK_FRAME_TCP_FIELD_URGENT_POINTER + NETWORK_FRAME_TCP_SIZE_URGENT_POINTER
 NETWORK_FRAME_TCP_FIELD_OPTIONS_MSS			equ	NETWORK_FRAME_TCP_FIELD_OPTIONS
 
+COLOR_BLACK						equ	0xFF101010
+COLOR_BLUE						equ	0xFF4141c0
+COLOR_GREEN						equ	0xFF41c041
+COLOR_CYAN						equ	0xFF00bfbf
+COLOR_RED						equ	0xFFc04141
+COLOR_MAGENTA						equ	0xFFbf006c
+COLOR_BROWN						equ	0xFFc08642
+COLOR_GRAY_LIGHT					equ	0xFFa8a8a8
+COLOR_GRAY						equ	0xFF575757
+COLOR_BLUE_LIGHT					equ	0xFF5757ff
+COLOR_GREEN_LIGHT					equ	0xFF57ff57
+COLOR_CYAN_LIGHT					equ	0xFF00ffff
+COLOR_RED_LIGHT						equ	0xFFff5757
+COLOR_MAGENTA_LIGHT					equ	0xFFff0090
+COLOR_YELLOW						equ	0xFFffff57
+COLOR_WHITE						equ	0xFFffffff
+
 ;===============================================================================
 ; STRUKTURY
 ;===============================================================================
@@ -389,4 +393,36 @@ struc	NETWORK_STRUCTURE_MAC
 	.3	resb	1
 	.4	resb	1
 	.5	resb	1
+endstruc
+
+struc	SUPERVGA_STRUCTURE_MODE_INFO_BLOCK
+	.ModeAttributes		resb	2
+	.WinAAttributes		resb	1
+	.WinBAttributes		resb	1
+	.WinGranularity		resb	2
+	.WinSize		resb	2
+	.WinASegment		resb	2
+	.WinBSegment		resb	2
+	.WinFuncPtr		resb	4
+	.BytesPerScanLine	resb	2
+	.XResolution		resb	2
+	.YResolution		resb	2
+	.XCharSize		resb	1
+	.YCharSize		resb	1
+	.NumberOfPlanes		resb	1
+	.BitsPerPixel		resb	1
+	.NumberOfBanks		resb	1
+	.MemoryModel		resb	1
+	.BankSize		resb	1
+	.NumberOfImagePages	resb	1
+	.Reserved		resb	1
+	.RedMaskSize		resb	1
+	.RedFieldPosition	resb	1
+	.GreenMaskSize		resb	1
+	.GreenFieldPosition	resb	1
+	.BlueMaskSize		resb	1
+	.BlueFieldPosition	resb	1
+	.RsvdMaskSize		resb	2
+	.DirectColorModeInfo	resb	1
+	.PhysicalVideoAddress	resb	4
 endstruc

@@ -57,14 +57,26 @@ kernel_idt_header:
 ;===============================================================================
 ; VIDEO
 ;===============================================================================
-kernel_video_base_address		dq	VIDEO_TEXT_MODE_BASE_address
-kernel_video_size_byte			dq	VIDEO_TEXT_MODE_SIZE_byte
-kernel_video_size_page			dq	VIDEO_TEXT_MODE_SIZE_page
-kernel_video_width_char			dq	VIDEO_TEXT_MODE_WIDTH_char
+kernel_video_base_address		dq	EMPTY
+kernel_video_size_byte			dq	EMPTY
+kernel_video_size_page			dq	EMPTY
+kernel_video_width_pixel		dq	EMPTY
+kernel_video_width_byte			dq	EMPTY
+kernel_video_width_char			dq	EMPTY 
+kernel_video_height_pixel		dq	EMPTY
+kernel_video_height_char		dq	EMPTY
+kernel_video_pixel_byte			dq	DWORD_SIZE_byte
+kernel_video_scanline_byte		dq	EMPTY
+kernel_video_scanline_padding_byte	dq	EMPTY 
+kernel_video_scanline_char_byte		dq	EMPTY
+kernel_video_char_width_byte		dq	EMPTY
 
-kernel_video_cursor_indicator		dq	VIDEO_TEXT_MODE_BASE_address
+kernel_video_cursor_x			dq	EMPTY
+kernel_video_cursor_y			dq	EMPTY
+kernel_video_cursor_indicator		dq	EMPTY
 
-kernel_video_char_color			db	VIDEO_TEXT_MODE_COLOR_FOREGROUND_GRAY_LIGHT
+kernel_video_font_color			dd	COLOR_GRAY_LIGHT	; znaku
+					dd	COLOR_BLACK		; tła
 
 ;===============================================================================
 ; PIC

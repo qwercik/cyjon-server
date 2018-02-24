@@ -3,6 +3,11 @@
 ;===============================================================================
 
 	;-----------------------------------------------------------------------
+	; pobierz właściwości trybu graficznego
+	;-----------------------------------------------------------------------
+	%include "kernel/init/video.asm"
+
+	;-----------------------------------------------------------------------
 	; utwórz binarną mapę pamięci za kodem jądra systemu
 	; pod adresem wyrównanym do rozmiaru strony
 	;-----------------------------------------------------------------------
@@ -68,3 +73,13 @@ network_end:
 	; dane wykorzystywane przez procedury inicjalizacyjne
 	;-----------------------------------------------------------------------
 	%include "kernel/init/data.asm"
+
+	;-----------------------------------------------------------------------
+	; dołącz lokalizacje
+	;-----------------------------------------------------------------------
+	%push
+	%defstr		%$system_locale			SYSTEM_LOCALE
+	%defstr		%$system_charset		SYSTEM_CHARSET
+	%strcat		%$include_system_locale,	"kernel/init/locale/", %$system_locale, ".", %$system_charset, ".asm"
+	%include	%$include_system_locale
+	%pop
