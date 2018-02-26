@@ -3,11 +3,89 @@
 ;===============================================================================
 
 ;===============================================================================
+kernel_video_cursor_disable:
+	; nałóż blokadę na kursor
+	inc	qword [kernel_video_cursor_lock_level]
+
+	; blokada nałożona?
+	cmp	qword [kernel_video_cursor_lock_level],	TRUE
+	jne	.ready	; blokada nałożona wcześniej, zwiększono poziom
+
+	; przełącz widoczność kursora
+	call	kernel_video_cursor_switch
+
+.ready:
+	; przywróć oryginalne rejestry
+	ret
+
+;===============================================================================
+kernel_video_cursor_enable:
+	; blokada nałożona?
+	cmp	qword [kernel_video_cursor_lock_level],	EMPTY
+	je	.ready	; nie, zignoruj
+
+	; zwolnij blokadę na kursor
+	dec	qword [kernel_video_cursor_lock_level]
+
+	; blokada dalej nałożona?
+	cmp	qword [kernel_video_cursor_lock_level],	EMPTY
+	jne	.ready	; tak, zignoruj
+
+	; przełącz widoczność kursora
+	call	kernel_video_cursor_switch
+
+.ready:
+	; przywróć oryginalne rejestry
+	ret
+
+;===============================================================================
+kernel_video_cursor_switch:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rcx
+	push	rdi
+
+	; scanline ekranu
+	mov	rax,	qword [kernel_video_scanline_byte]
+
+	; wysokość kursora
+	mov	rcx,	KERNEL_FONT_HEIGHT_pixel
+
+	; pobierz wskaźnik aktualnej pozycji kursora
+	mov	rdi,	qword [kernel_video_cursor_indicator]
+
+.loop:
+	; odróć kolor piksela
+	not	dword [rdi]
+
+	; piksel w pełni widoczny
+	or	byte [rdi + 0x03],	MAX_UNSIGNED
+
+	; przesuń wskaźnik na następny piksel
+	add	rdi,	rax
+
+	; nastepny piksel?
+	dec	rcx
+	jnz	.loop	; tak
+
+.end:
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rcx
+	pop	rax
+
+	; powrót z procedury
+	ret
+
+;===============================================================================
 kernel_video_string:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rcx
 	push	rsi
+
+	; wyłącz kursor
+	call	kernel_video_cursor_disable
 
 .loop:
 	; koniec ciągu?
@@ -29,6 +107,9 @@ kernel_video_string:
 	jmp	.loop
 
 .end:
+	; włącz kursor
+	call	kernel_video_cursor_enable
+
 	; przywróć oryginalne rejestry
 	pop	rsi
 	pop	rcx
@@ -46,6 +127,9 @@ kernel_video_char:
 	push	rdi
 	push	r8
 	push	r9
+
+	; wyłącz kursor
+	call	kernel_video_cursor_disable
 
 	; pobierz właściwości wirtualnego kursora
 	mov	rdi,	qword [kernel_video_cursor_indicator]
@@ -143,6 +227,9 @@ kernel_video_char:
 	mov	qword [kernel_video_cursor_x],	r8
 	mov	qword [kernel_video_cursor_y],	r9
 
+	; włącz kursor
+	call	kernel_video_cursor_enable
+
 	; przywróć oryginalne rejestry
 	pop	r8
 	pop	r9
@@ -231,8 +318,36 @@ kernel_video_char_matrix:
 	ret
 
 ;===============================================================================
-kernel_video_cursor:
+kernel_video_clean:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rcx
+	push	rdi
 
+	; wyłącz kursor
+	call	kernel_video_cursor_disable
+
+	; przygotuj rejestry
+	mov	eax,	dword [kernel_video_font_color + DWORD_SIZE_byte]
+	mov	rcx,	qword [kernel_video_size_byte]
+	shr	rcx,	KERNEL_VIDEO_COLOR_DEPTH_shift
+	mov	rdi,	qword [kernel_video_base_address]
+
+	; zresetuj wskaźnik i pozycje kursora
+	mov	qword [kernel_video_cursor_indicator],	rdi
+	mov	qword [kernel_video_cursor_x],	EMPTY
+	mov	qword [kernel_video_cursor_y],	EMPTY
+
+	; wyczyść
+	rep	stosd
+
+	; włącz kursor
+	call	kernel_video_cursor_enable
+
+	; przywróć oryginalne rejestry
+	pop	rdi
+	pop	rcx
+	pop	rax
 
 	; powrót z procedury
 	ret
@@ -245,6 +360,9 @@ kernel_video_scroll:
 	push	rdx
 	push	rsi
 	push	rdi
+
+	; wyłącz kursor
+	call	kernel_video_cursor_disable
 
 	; rozmiar przemieszczanej przestrzeni
 	mov	rax,	qword [kernel_video_scanline_char_byte]
@@ -268,6 +386,9 @@ kernel_video_scroll:
 	mov	rcx,	qword [kernel_video_scanline_char_byte]
 	shr	rcx,	KERNEL_VIDEO_COLOR_DEPTH_shift
 	rep	stosd
+
+	; włącz kursor
+	call	kernel_video_cursor_enable
 
 	; przywróć oryginalne rejestry
 	pop	rdi

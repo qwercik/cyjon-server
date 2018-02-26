@@ -68,3 +68,6 @@
 	mov	eax,	dword [kernel_video_height_pixel]
 	div	qword [kernel_font_height_pixel]
 	mov	dword [kernel_video_height_char],	eax
+
+	; wyczyść ekran
+	call	kernel_video_clean

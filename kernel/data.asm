@@ -74,6 +74,7 @@ kernel_video_char_width_byte		dq	EMPTY
 kernel_video_cursor_x			dq	EMPTY
 kernel_video_cursor_y			dq	EMPTY
 kernel_video_cursor_indicator		dq	EMPTY
+kernel_video_cursor_lock_level		dq	EMPTY
 
 kernel_video_font_color			dd	COLOR_GRAY_LIGHT	; znaku
 					dd	COLOR_BLACK		; tła

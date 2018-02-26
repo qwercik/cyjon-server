@@ -8,7 +8,7 @@
 ;	rdi - wskaźnik do bufora przechowującego pobrane znaki
 ;	r8 - ilość znaków już przebywających w buforze (zostaną wyświetlone, a kursor przemieszczony na koniec ciągu)
 ; wyjście:
-;	Falga CF - użytkownik przerwał wprowadzanie (np. klawisz ESC), lub ciąg pusty
+;	Flaga CF - ciąg pusty
 ;	rcx - ilość pobranych znaków od użytkownika
 prompt:
 	; zachowaj oryginalne rejestry
@@ -54,7 +54,7 @@ prompt:
 
 	; klawisz typu ESC?
 	cmp	ax,	ASCII_ESCAPE
-	je	.empty	; zakończ libliotekę
+	je	.empty	; zakończ
 
 	; znak dozwolony?
 

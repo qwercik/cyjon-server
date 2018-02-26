@@ -63,10 +63,14 @@ kernel:
 	%include "kernel/daemons/shell.asm"
 
 	;-----------------------------------------------------------------------
-	; dołącz biblioteki wykorzystywane przez jądro systemu
+	; dołącz biblioteki wykorzystywane przez jądro systemu i podprocesy
 	;-----------------------------------------------------------------------
-	%include "library/library_page_align_up.asm"
 	%include "library/library_bit_find.asm"
+	%include "library/library_page_align_up.asm"
+	%include "library/library_string_compare.asm"
+	%include "library/library_string_cut.asm"
+	%include "library/library_string_find_word.asm"
+	%include "library/library_string_trim.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz lokalizacje

@@ -7,3 +7,6 @@ daemon_shell_prompt		db	"# "
 daemon_shell_prompt_end:
 
 daemon_shell_cache	times DAEMONS_SHELL_CACHE_SIZE_byte	db	EMPTY
+
+daemon_shell_command_clean	db	"clean"
+daemon_shell_command_clean_end:
