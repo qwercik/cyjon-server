@@ -27,34 +27,34 @@ daemon_shell:
 	; pobierz polecenie
 	mov	rcx,	DAEMONS_SHELL_CACHE_SIZE_byte
 	mov	rdi,	daemon_shell_cache
-	call	prompt
+	call	shell_prompt
 	jc	.restart	; brak danych
-
-	xchg	bx,bx
 
 	; usuń "białe znaki" z początku i końca ciągu
 	call	library_string_trim
 	jc	.restart	; ciąg zawierał tylko "białe znaki", zignoruj
 
 	; zapamiętaj oryginalny rozmiar ciągu
-	mov	rdx,	rcx
+	mov	rbx,	rcx
 
 	; znajdź pierwszez "słowo" w ciągu
 	call	library_string_find_word
 
-	; polecenie "clean"?
-	mov	rcx,	daemon_shell_command_clean_end - daemon_shell_command_clean
-	mov	rsi,	daemon_shell_command_clean
-	call	library_string_compare
-	jc	.no_clean
+	; sprawdź czy polecenie obsługiwane
+	call	shell_command
+	jnc	.restart	; wykonano poprawnie
 
-	; wyczyść ekran
-	call	kernel_video_clean
+	; wyświetl komunikat błędu
+	mov	rcx,	daemon_shell_error_command_text_end - daemon_shell_error_command_text
+	mov	rsi,	daemon_shell_error_command_text
+	call	kernel_video_string
+	mov	rcx,	rbx
+	mov	rsi,	rdi
+	call	kernel_video_string
+	mov	rcx,	daemon_shell_error_implementation_text_end - daemon_shell_error_implementation_text
+	mov	rsi,	daemon_shell_error_implementation_text
+	call	kernel_video_string
 
-	; wyświetl ponownie znak zachęty
-	jmp	.restart
-
-.no_clean:
 	; pobierz nowe polecenie
 	jmp	.restart
 
@@ -63,6 +63,7 @@ daemon_shell:
 	;-----------------------------------------------------------------------
 	%include "kernel/daemons/shell/data.asm"
 	%include "kernel/daemons/shell/prompt.asm"
+	%include "kernel/daemons/shell/command.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz lokalizacje

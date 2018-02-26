@@ -10,7 +10,7 @@
 ; wyjście:
 ;	Flaga CF - ciąg pusty
 ;	rcx - ilość pobranych znaków od użytkownika
-prompt:
+shell_prompt:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rdx
