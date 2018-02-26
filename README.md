@@ -5,7 +5,7 @@ Prosty wielozadaniowy system operacyjny, napisany w języku asemblera dla proces
 Aktualnie nic wielkiego nie robi :) Całe środowisko zostało przygotowane, przerwania uruchomione.
 - sterownik karty sieciowej odbiera pakiety, ale nie są przetwarzane (porzucam - obsługę udostępnię przy następnych aktualizacjach),
 - częściowa obsługa klawiatury (nie wszystkie klawisze zaimplementowane),
-- powłoka pobiera od administratora polecenia (jeszcze nie przetwarza).
+- powłoka pobiera od administratora polecenia i przetwarza lub wyświetla komuniat o braku obsługi.
 
 #### Kompilacja:
 	nasm.exe -f bin	kernel.asm      -o build\kernel
