@@ -198,10 +198,15 @@ kernel_keyboard:
 
 ;===============================================================================
 ; wyjście:
+;	Flaga ZF - jeśli brak klawisza
 ;	ax - kod ASCII klawisza lub jego sekwencja
 kernel_keyboard_read:
+	; pobierz kod ASCII i usuń z bufora
 	mov	ax,	word [kernel_keyboard_cache]
 	shr	qword [kernel_keyboard_cache],	MOVE_HIGH_TO_AX
+
+	; zwróć informacje o wyniku
+	test	ax,	ax
 
 	; powrót z procedury
 	ret

@@ -8,14 +8,6 @@ kernel_video_string:
 	push	rax
 	push	rcx
 	push	rsi
-	push	rdi
-	push	r8
-	push	r9
-
-	; pobierz właściwości wirtualnego kursora
-	mov	rdi,	qword [kernel_video_cursor_indicator]
-	mov	r8,	qword [kernel_video_cursor_x]
-	mov	r9,	qword [kernel_video_cursor_y]
 
 .loop:
 	; koniec ciągu?
@@ -26,10 +18,6 @@ kernel_video_string:
 	cmp	byte [rsi],	ASCII_TERMINATOR
 	je	.end	; tak
 
-	; znak nowej linii?
-	cmp	byte [rsi],	ASCII_NEW_LINE
-	je	.new_line	; tak
-
 	; pobierz znak z ciągu
 	xor	eax,	eax
 	lodsb
@@ -37,66 +25,11 @@ kernel_video_string:
 	; wyświetl znak
 	call	kernel_video_char
 
-	; wirtualny kursor przemieszczono w prawo
-	add	rdi,	KERNEL_FONT_WIDTH_pixel << KERNEL_VIDEO_COLOR_DEPTH_shift
-	inc	r8
-
-	; koniec wiersza?
-	cmp	r8,	qword [kernel_video_width_char]
-	jne	.loop	; nie
-
-	; koryguj pozycje kursora
-	sub	rdi,	qword [kernel_video_width_byte]
-
-.column:
-	; kursor przemieścił się na początek nowej linii
-	xor	r8d,	r8d	; pozycja X
-	inc	r9	; pozycja Y
-
-	; kursor znajduje się poza ekranem?
-	cmp	r9,	qword [kernel_video_height_char]
-	jne	.scroll	; tak
-
-	; przesuń wskaźnik kursora o wiersz w dół
-	add	rdi,	qword [kernel_video_scanline_char_byte]
-
-	; kontynuuj z pozostałą zawartością ciągu
+	; wyświetl pozostałe znaki z ciągu
 	jmp	.loop
-
-.scroll:
-	; koryguj pozycje kursora
-	dec	r9	; pozycja Y
-
-	; przewiń zawartość ekranu o linię w górę
-	call	kernel_video_scroll
-
-	; kontynuuj z pozostałą zawartością ciągu
-	jmp	.loop
-
-.new_line:
-	; cofnij wskaźnik na początek nowej linii
-	mov	rax,	KERNEL_FONT_WIDTH_pixel << KERNEL_VIDEO_COLOR_DEPTH_shift
-	mul	r8	; ilość znaków w aktualnej linii
-	sub	rdi,	rax	; cofnij wskaźnik
-	add	rdi,	qword [kernel_video_scanline_char_byte]
-
-	; następny znak z ciągu
-	inc	rsi
-
-	; ilość znaków w ciągu zmniejszyła się
-	dec	rcx
-	jns	.column	; kontynuuj
 
 .end:
-	; zachowaj nowe właściwości kursora
-	mov	qword [kernel_video_cursor_indicator],	rdi
-	mov	qword [kernel_video_cursor_x],	r8
-	mov	qword [kernel_video_cursor_y],	r9
-
 	; przywróć oryginalne rejestry
-	pop	r9
-	pop	r8
-	pop	rdi
 	pop	rsi
 	pop	rcx
 	pop	rax
@@ -107,8 +40,123 @@ kernel_video_string:
 ;===============================================================================
 ; wejście:
 ;	rax - kod ASCII znaku
-;	rdi - wskaźnik pozycji znaku w przestrzeni pamięci ekranu
 kernel_video_char:
+	; zachowaj oryginalne rejestry
+	push	rax
+	push	rdi
+	push	r8
+	push	r9
+
+	; pobierz właściwości wirtualnego kursora
+	mov	rdi,	qword [kernel_video_cursor_indicator]
+	mov	r8,	qword [kernel_video_cursor_x]
+	mov	r9,	qword [kernel_video_cursor_y]
+
+	; znak nowej linii?
+	cmp	ax,	ASCII_NEW_LINE
+	je	.new_line	; tak
+
+	; znak backspace?
+	cmp	ax,	ASCII_BACKSPACE
+	je	.backspace	; tak
+
+	; wyświetl matrycę znaku na ekran
+	call	kernel_video_char_matrix
+
+	; wirtualny kursor przemieszczono w prawo
+	add	rdi,	KERNEL_FONT_WIDTH_pixel << KERNEL_VIDEO_COLOR_DEPTH_shift
+	inc	r8
+
+	; koniec wiersza?
+	cmp	r8,	qword [kernel_video_width_char]
+	jne	.end	; nie, koniec
+
+	; koryguj pozycje kursora
+	sub	rdi,	qword [kernel_video_width_byte]
+	add	rdi,	qword [kernel_video_scanline_char_byte]
+
+.column:
+	; kursor przemieścił się na początek nowej linii
+	xor	r8d,	r8d	; pozycja X
+	inc	r9	; pozycja Y
+
+	; kursor znajduje się poza ekranem?
+	cmp	r9,	qword [kernel_video_height_char]
+	jne	.end	; nie, koniec
+
+	; koryguj pozycje kursora
+	sub	rdi,	qword [kernel_video_scanline_char_byte]
+	dec	r9	; pozycja Y
+
+	; przewiń zawartość ekranu o linię w górę
+	call	kernel_video_scroll
+
+	; koniec
+	jmp	.end
+
+.new_line:
+	; cofnij wskaźnik na początek nowej linii
+	mov	rax,	KERNEL_FONT_WIDTH_pixel << KERNEL_VIDEO_COLOR_DEPTH_shift
+	mul	r8	; ilość znaków w aktualnej linii
+	sub	rdi,	rax	; cofnij wskaźnik
+	add	rdi,	qword [kernel_video_scanline_char_byte]
+
+	; kontynuuj
+	jmp	.column
+
+.backspace:
+	; kursor na początku wiersza?
+	cmp	r8,	EMPTY
+	je	.return
+
+	; koryguj pozycje wskaźnika i kursora
+	sub	rdi,	KERNEL_FONT_WIDTH_pixel << KERNEL_VIDEO_COLOR_DEPTH_shift
+	dec	r8
+
+	; wyczyść pozycję znaku
+	jmp	.clean
+
+.return:
+	; kusor w pierwszym wierszu?
+	cmp	r9,	EMPTY
+	je	.end	; tak
+
+	; cofnij kursor o wiersz
+	dec	r9
+
+	; cofnij wskaźnik kursora o znak
+	mov	rax,	qword [kernel_video_char_width_byte]
+	mov	r8,	qword [kernel_video_width_char]
+	dec	r8
+	mul	r8
+	add	rdi,	rax
+	sub	rdi,	qword [kernel_video_scanline_char_byte]
+
+.clean:
+	; wyczyść pozycję znaku spacją
+	mov	eax,	ASCII_SPACE
+	call	kernel_video_char_matrix
+
+.end:
+	; zachowaj nowe właściwości kursora
+	mov	qword [kernel_video_cursor_indicator],	rdi
+	mov	qword [kernel_video_cursor_x],	r8
+	mov	qword [kernel_video_cursor_y],	r9
+
+	; przywróć oryginalne rejestry
+	pop	r8
+	pop	r9
+	pop	rdi
+	pop	rax
+
+	; powrót z procedury
+	ret
+
+;===============================================================================
+; wejście:
+;	rax - kod ASCII znaku
+;	rdi - pozycja znaku w przestrzeni pamięci ekranu
+kernel_video_char_matrix:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rbx
@@ -116,7 +164,6 @@ kernel_video_char:
 	push	rdx
 	push	rsi
 	push	rdi
-	push	rbp
 
 	; wysokość matrycy znaku w pikselach
 	mov	bl,	KERNEL_FONT_HEIGHT_pixel
@@ -173,7 +220,6 @@ kernel_video_char:
 	jnz	.next	; nie, następna linia matrycy znaku
 
 	; przywróć oryginalne rejestry
-	pop	rbp
 	pop	rdi
 	pop	rsi
 	pop	rdx
