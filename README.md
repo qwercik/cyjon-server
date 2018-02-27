@@ -8,7 +8,8 @@ Aktualnie nic wielkiego nie robi :) Całe środowisko zostało przygotowane, prz
 - powłoka pobiera od administratora polecenia i przetwarza lub wyświetla komuniat o braku obsługi.
 
 #### Kompilacja:
-	nasm.exe -f bin	kernel.asm      -o build\kernel
+	nasm.exe -f bin software\shell.asm	-o build\shell
+	nasm.exe -f bin	kernel.asm      	-o build\kernel
 
 #### Uruchomienie:
 Do uruchomienia systemu, należy skorzystać z programu rozruchowego http://github.com/akasei/Zero.
