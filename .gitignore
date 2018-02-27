@@ -1,8 +1,0 @@
-
-kernel/daemons/shell.asm
-kernel/daemons/shell.asm
-kernel/daemons/shell/command.asm
-kernel/daemons/shell/config.asm
-kernel/daemons/shell/data.asm
-kernel/daemons/shell/locale/en_US.ASCII.asm
-kernel/daemons/shell/prompt.asm
