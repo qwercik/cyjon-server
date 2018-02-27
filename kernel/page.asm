@@ -3,6 +3,51 @@
 ;===============================================================================
 
 ;===============================================================================
+; wejście:
+;	rcx - ilość stron do zarezerwowania
+; wyjście:
+;	Flaga CF - jeśli brak wystarczającej ilości
+kernel_page_secure:
+	; zachowaj oryginalne rejestry
+	push	rax
+
+	; zablokuj modyfikacje zmiennych przez inne procesy
+	call	kernel_page_lock
+
+	; istnieją dostępne strony?
+	mov	rax,	qword [kernel_page_free_count]
+	sub	rax,	qword [kernel_page_reserved_count]
+	jz	.error	; nie
+
+	; pozostało wystarczająco?
+	cmp	rax,	rcx
+	jb	.error	; nie
+
+	; zarezerwuj
+	sub	qword [kernel_page_free_count],	rcx
+	add	qword [kernel_page_reserved_count],	rcx
+
+	; flaga, sukces
+	clc
+
+	; koniec
+	jmp	.end
+
+.error:
+	; flaga, błąd
+	stc
+
+.end:
+	; odblokuj
+	mov	byte [kernel_page_lock_semaphore],	FALSE
+
+	; przywróć oryginalne rejestry
+	pop	rax
+
+	; powrót z procedury
+	ret
+
+;===============================================================================
 ; opcjonalnie:
 ;	rbp - ilość stron zabezpieczonych
 ;		procedura będzie z nich korzystać, zarazem licznik zmniejszać
@@ -117,7 +162,7 @@ kernel_page_dump:
 ;	rax - adres przestrzeni fizycznej do opisania w tablicach stronicowania
 ;	rbx - flagi rekordów tablic stronicowania
 ;	rcx - rozmiar przestrzeni w stronach do opisania
-;	r11 - adres fizyczny tablicy PML4, w której wykonać wpis
+;	r11 - adres fizyczny tablicy PML4, w której dokonać wpis
 ; wyjście:
 ;	Flaga CF - ustawiona, jeśli wystąpił błąd
 ;	r8 - adres wiersza opisującego pierwszą stronę przestrzeni
@@ -485,7 +530,7 @@ kernel_page_pml1:
 .pml4:
 	; sprawdź czy tablica PML4 jest pełna
 	cmp	r15,	KERNEL_PAGE_ROW_count
-	je	.error	; jeśli tak, utwórz nową tablicę PML5..., że jak?!
+	je	.error	; jeśli tak, utwórz nową tablicę PML5..., że co?!
 
 	; sprawdź czy kolejny w kolejce rekord tablicy PML4 posiada adres tablicy PML3
 	cmp	qword [r11],	EMPTY
@@ -537,7 +582,7 @@ kernel_page_pml1:
 ;	rax - adres przestrzeni logicznej do opisania w tablicach stronicowania
 ;	rbx - flagi rekordów tablic stronicowania
 ;	rcx - rozmiar przestrzeni w stronach do opisania
-;	r11 - adres fizyczny tablicy PML4, w której wykonać wpis
+;	r11 - adres fizyczny tablicy PML4, w której dokonać wpis
 ; wyjście:
 ;	Flaga CF - jeśli ustawiona, błąd
 ;	r8 - adres rekordu opisującego pierwszą stronę przestrzeni

@@ -160,6 +160,9 @@ kernel_task_add:
 	; aktualizuj flagi zadania
 	mov	word [rdi + KERNEL_STRUCTURE_TASK.flags],	bx
 
+	; ilość zadań na liście, zwiekszyła się
+	inc	qword [kernel_task_count]
+
 	; flaga, sukces
 	clc
 

@@ -7,9 +7,6 @@ list_daemons:
 	dq	daemon_ethernet	; wskaźnik wejścia
 	dq	8	; ilość znaków w nazwie
 	db	"ethernet"
-	dq	daemon_shell	; wskaźnik wejścia
-	dq	5	; ilość znaków w nazwie
-	db	"shell"
 
 	; koniec listy
 	dq	EMPTY

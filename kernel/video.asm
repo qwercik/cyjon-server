@@ -78,6 +78,9 @@ kernel_video_cursor_switch:
 	ret
 
 ;===============================================================================
+; wejście:
+;	rcx - ilość znaków w ciągu
+;	rsi - wskaźnik do ciągu
 kernel_video_string:
 	; zachowaj oryginalne rejestry
 	push	rax
@@ -231,8 +234,8 @@ kernel_video_char:
 	call	kernel_video_cursor_enable
 
 	; przywróć oryginalne rejestry
-	pop	r8
 	pop	r9
+	pop	r8
 	pop	rdi
 	pop	rax
 
@@ -253,7 +256,7 @@ kernel_video_char_matrix:
 	push	rdi
 
 	; wysokość matrycy znaku w pikselach
-	mov	bl,	KERNEL_FONT_HEIGHT_pixel
+	mov	ebx,	KERNEL_FONT_HEIGHT_pixel
 
 	; oblicz przesunięcie względem początku tablicy ASCII
 	mul	rbx

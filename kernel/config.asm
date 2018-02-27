@@ -16,6 +16,24 @@ KERNEL_BASE_address					equ	0x00100000
 KERNEL_PIT_CLOCK_hz					equ	1000
 
 ;===============================================================================
+; GDT
+;===============================================================================
+struc	KERNEL_STRUCTURE_GDT
+	.null				resb	8
+	.cs_ring0			resb	8
+	.ds_ring0			resb	8
+	.cs_ring3			resb	8
+	.ds_ring3			resb	8
+	.tss				resb	8
+	.SIZE:
+endstruc
+
+struc	KERNEL_STRUCTURE_GDT_OR_IDT_HEADER
+	.limit				resb	2
+	.address			resb	8
+endstruc
+
+;===============================================================================
 ; MEMORY
 ;===============================================================================
 KERNEL_MEMORY_LOW_address				equ	KERNEL_BASE_address
@@ -25,6 +43,8 @@ KERNEL_MEMORY_HIGH_VIRTUAL_address			equ	KERNEL_MEMORY_HIGH_REAL_address - KERNE
 
 KERNEL_MEMORY_STACK_KERNEL_SIZE_byte			equ	KERNEL_PAGE_SIZE_byte * WORD_SIZE_byte
 KERNEL_MEMORY_STACK_KERNEL_address			equ	KERNEL_MEMORY_HIGH_VIRTUAL_address - KERNEL_MEMORY_STACK_KERNEL_SIZE_byte
+KERNEL_MEMORY_STACK_THREAD_SIZE_byte			equ	KERNEL_PAGE_SIZE_byte
+KERNEL_MEMORY_STACK_THREAD_address			equ	(KERNEL_MEMORY_HIGH_VIRTUAL_address * WORD_SIZE_byte) - KERNEL_MEMORY_STACK_THREAD_SIZE_byte
 
 ;===============================================================================
 ; PIC
@@ -70,6 +90,7 @@ KERNEL_IDT_TYPE_ISR					equ	0xEF00
 ; TASK
 ;===============================================================================
 KERNEL_TASK_EFLAGS_IF					equ	000000000000001000000000b	; przerwania włączone
+KERNEL_TASK_EFLAGS_ZF					equ	000000000000000000100000b
 KERNEL_TASK_EFLAGS_DEFAULT				equ	KERNEL_TASK_EFLAGS_IF
 
 KERNEL_TASK_FLAG_ACTIVE					equ	0000000000000001b	; rekord bierze czynny udział w pracy systemu
@@ -81,6 +102,16 @@ KERNEL_TASK_FLAG_ACTIVE_bit				equ	0
 KERNEL_TASK_FLAG_CLOSED_bit				equ	1
 KERNEL_TASK_FLAG_DAEMON_bit				equ	2
 KERNEL_TASK_FALG_RESERVED_bit				equ	3
+
+struc	KERNEL_STRUCTURE_TASK
+	.pid				resb	8
+	.cr3				resb	8
+	.rsp				resb	8
+	.flags				resb	2
+	.length				resb	1
+	.name				resb	255
+	.SIZE:
+endstruc
 
 ;===============================================================================
 ; KEYBOARD
@@ -102,6 +133,31 @@ KERNEL_KEYBOARD_RELEASE_ALT				equ	0x80 + KERNEL_KEYBOARD_PRESS_ALT
 ; VIDEO
 ;===============================================================================
 KERNEL_VIDEO_COLOR_DEPTH_shift				equ	2
+
+;===============================================================================
+; THREAD
+;===============================================================================
+struc	KERNEL_STRUCTURE_THREAD
+	.length						resb	1
+	.name						resb	255
+	.address					resq	1
+	.limit						resq	1
+	.SIZE:
+endstruc
+
+;===============================================================================
+; SERVICE
+;===============================================================================
+KERNEL_SERVICE						equ	0x40
+
+KERNEL_SERVICE_CONSOLE					equ	0x01
+KERNEL_SERVICE_CONSOLE_CLEAN				equ	0x0100
+KERNEL_SERVICE_CONSOLE_STRING				equ	0x0101
+KERNEL_SERVICE_CONSOLE_CHAR				equ	0x0102
+KERNEL_SERVICE_CONSOLE_CURSOR				equ	0x0103
+
+KERNEL_SERVICE_KEYBOARD					equ	0x02
+KERNEL_SERVICE_KEYBOARD_READ				equ	0x0200
 
 ;===============================================================================
 ; STAŁE POWSZECHNE
@@ -353,36 +409,11 @@ COLOR_YELLOW						equ	0xFFffff57
 COLOR_WHITE						equ	0xFFffffff
 
 ;===============================================================================
-; STRUKTURY
+; STRUKTURY OGÓLNE
 ;===============================================================================
-struc	KERNEL_STRUCTURE_GDT
-	.null				resb	8
-	.cs_ring0			resb	8
-	.ds_ring0			resb	8
-	.cs_ring3			resb	8
-	.ds_ring3			resb	8
-	.tss				resb	8
-	.SIZE:
-endstruc
-
-struc	KERNEL_STRUCTURE_GDT_OR_IDT_HEADER
-	.limit				resb	2
-	.address			resb	8
-endstruc
-
 struc	KERNEL_STRUCTURE_BLOCK
 	.data				resb	KERNEL_PAGE_SIZE_byte - QWORD_SIZE_byte
 	.link				resb	QWORD_SIZE_byte	; wskaźnik do następnego bloku danych
-	.SIZE:
-endstruc
-
-struc	KERNEL_STRUCTURE_TASK
-	.pid				resb	8
-	.cr3				resb	8
-	.rsp				resb	8
-	.flags				resb	2
-	.length				resb	1
-	.name				resb	255
 	.SIZE:
 endstruc
 

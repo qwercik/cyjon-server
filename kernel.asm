@@ -27,13 +27,12 @@ clean:
 	%include "kernel/clean.asm"
 
 kernel:
-	; wyświetl informacje o gotowości do działania
-	mov	rcx,	kernel_string_welcome_end - kernel_string_welcome
-	mov	rsi,	kernel_string_welcome
-	call	kernel_video_string
-
 	; włącz przerwania
 	sti
+
+	; uruchom powłokę systemu
+	mov	rdi,	kernel_thread_table.shell
+	call	kernel_thread_new
 
 	; zatrzymaj dalsze wykonywanie kodu
 	jmp	$
@@ -50,6 +49,8 @@ kernel:
 	%include "kernel/pci.asm"
 	%include "kernel/video.asm"
 	%include "kernel/font.asm"
+	%include "kernel/thread.asm"
+	%include "kernel/service.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz sterowniki urządzeń
@@ -60,13 +61,13 @@ kernel:
 	; dołącz demony
 	;-----------------------------------------------------------------------
 	%include "kernel/daemons/ethernet.asm"
-	%include "kernel/daemons/shell.asm"
 
 	;-----------------------------------------------------------------------
 	; dołącz biblioteki wykorzystywane przez jądro systemu i podprocesy
 	;-----------------------------------------------------------------------
 	%include "library/library_bit_find.asm"
 	%include "library/library_page_align_up.asm"
+	%include "library/library_page_from_byte.asm"
 	%include "library/library_string_compare.asm"
 	%include "library/library_string_cut.asm"
 	%include "library/library_string_find_word.asm"

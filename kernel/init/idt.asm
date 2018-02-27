@@ -27,6 +27,12 @@
 	mov	rcx,	208	; mapuj pozostałe przerwania programowe 48..255
 	call	kernel_idt_update
 
+	; podłącz usługi pod przerwanie programowe 64
+	mov	rax,	64
+	mov	bx,	KERNEL_IDT_TYPE_ISR	; typ przerwania - programowe
+	mov	rdi,	kernel_service
+	call	kernel_idt_mount
+
 	;-----------------------------------------------------------------------
 	; załaduj Tablicę Deskryptorów Przerwań
 	lidt	[kernel_idt_header]

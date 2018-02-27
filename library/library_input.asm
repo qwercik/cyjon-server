@@ -8,9 +8,9 @@
 ;	rdi - wskaźnik do bufora przechowującego pobrane znaki
 ;	r8 - ilość znaków już przebywających w buforze (zostaną wyświetlone, a kursor przemieszczony na koniec ciągu)
 ; wyjście:
-;	Flaga CF - ciąg pusty
+;	Falga CF - użytkownik przerwał wprowadzanie (np. klawisz ESC), lub ciąg pusty
 ;	rcx - ilość pobranych znaków od użytkownika
-shell_prompt:
+library_input:
 	; zachowaj oryginalne rejestry
 	push	rax
 	push	rdx
@@ -25,9 +25,10 @@ shell_prompt:
 	je	.loop	; brak
 
 	; wyświetl zawartość bufora
+	mov	rax,	KERNEL_SERVICE_CONSOLE_STRING
 	xchg	rcx,	r8	; ilość znaków w buforze
 	xchg	rsi,	rdi	; ustaw wskaźnik na początek bufora
-	call	kernel_video_string
+	int	KERNEL_SERVICE
 
 	; rejestry na miejsce
 	xchg	rcx,	r8
@@ -41,8 +42,8 @@ shell_prompt:
 
 .loop:
 	; pobierz klawisz
-	call	kernel_keyboard_read
-	jz	.loop	; brak klawisza, spróbuj raz jeszcze
+	mov	ax,	KERNEL_SERVICE_KEYBOARD_READ
+	int	KERNEL_SERVICE
 
 	; klawisz typu Backspace?
 	cmp	ax,	ASCII_BACKSPACE
@@ -54,7 +55,7 @@ shell_prompt:
 
 	; klawisz typu ESC?
 	cmp	ax,	ASCII_ESCAPE
-	je	.empty	; zakończ
+	je	.empty	; zakończ libliotekę
 
 	; znak dozwolony?
 
@@ -76,7 +77,9 @@ shell_prompt:
 
 .print:
 	; wyświetl znak
-	call	kernel_video_char
+	mov	dl,	al	; załaduj znak do wyświetlenia
+	mov	ax,	KERNEL_SERVICE_CONSOLE_CHAR
+	int	KERNEL_SERVICE
 
 	; kontynuuj
 	jmp	.loop

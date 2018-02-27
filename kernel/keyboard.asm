@@ -172,8 +172,8 @@ kernel_keyboard:
 
 .save:
 	; zachowaj wartość ASCII klawisza w buforze programowym
-	shl	qword [kernel_keyboard_cache],	MOVE_HIGH_TO_AX
-	mov	word [kernel_keyboard_cache + DWORD_SIZE_byte + WORD_SIZE_byte],	ax
+	shl	qword [kernel_keyboard_cache],	MOVE_AX_TO_HIGH
+	mov	word [kernel_keyboard_cache],	ax
 
 	; koniec obsługi kontrolera klawiatury
 	jmp	.end
@@ -202,8 +202,8 @@ kernel_keyboard:
 ;	ax - kod ASCII klawisza lub jego sekwencja
 kernel_keyboard_read:
 	; pobierz kod ASCII i usuń z bufora
-	mov	ax,	word [kernel_keyboard_cache]
-	shr	qword [kernel_keyboard_cache],	MOVE_HIGH_TO_AX
+	mov	ax,	word [kernel_keyboard_cache + DWORD_SIZE_byte + WORD_SIZE_byte]
+	shl	qword [kernel_keyboard_cache],	MOVE_AX_TO_HIGH
 
 	; zwróć informacje o wyniku
 	test	ax,	ax
