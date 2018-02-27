@@ -9,10 +9,14 @@ Aktualnie nic wielkiego nie robi :) Całe środowisko zostało przygotowane, prz
 
 #### Kompilacja:
 	nasm.exe -f bin software\shell.asm	-o build\shell
-	nasm.exe -f bin	kernel.asm      	-o build\kernel
+
+	nasm.exe -f bin	kernel.asm      -o build\kernel
+
+	nasm.exe -f bin	zero.asm        -o build\zero
+	nasm.exe -f bin	bootsector.asm  -o build\disk.raw
 
 #### Uruchomienie:
-Do uruchomienia systemu, należy skorzystać z programu rozruchowego http://github.com/akasei/Zero.
+	qemu-system-x86_64.exe -drive format=raw,file=build\disk.raw -m 2
 
 #### Licencja:
 Kod źródłowy systemu operacyjnego jest na licencji **GNU General Public License 3.0**
