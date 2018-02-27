@@ -2,6 +2,8 @@
 Prosty wielozadaniowy system operacyjny, napisany w języku asemblera dla procesorów z rodziny amd64/x86-64.
 
 #### Działanie:
+System korzysta z programu rozruchowego: http://github.com/akasei/zero
+
 Aktualnie nic wielkiego nie robi :) Całe środowisko zostało przygotowane, przerwania uruchomione.
 - sterownik karty sieciowej odbiera pakiety, ale nie są przetwarzane (porzucam - obsługę udostępnię przy następnych aktualizacjach),
 - częściowa obsługa klawiatury (nie wszystkie klawisze zaimplementowane),
