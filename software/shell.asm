@@ -54,11 +54,11 @@ shell:
 	call	library_string_trim
 	jc	.restart	; ciąg zawierał tylko "białe znaki", zignoruj
 
-	; zapamiętaj oryginalny rozmiar ciągu
-	mov	rbx,	rcx
-
 	; znajdź pierwsze "słowo" w ciągu
 	call	library_string_find_word
+
+	; zapamiętaj rozmiar polecenia
+	mov	rbx,	rcx
 
 	; sprawdź czy polecenie obsługiwane
 	call	shell_command
@@ -77,8 +77,6 @@ shell:
 	mov	rcx,	shell_text_error_not_found_end - shell_text_error_not_found
 	mov	rsi,	shell_text_error_not_found
 	int	KERNEL_SERVICE
-
-	xchg	bx,bx
 
 	; pobierz nowe polecenie
 	jmp	.restart
