@@ -3,8 +3,8 @@
 ;===============================================================================
 
 struc	STRUCTURE_MEMORY_MAP_ROW
-	.limit		resb	8
 	.address	resb	8
+	.limit		resb	8
 	.type		resb	4
 	.acpi		resb	4
 	.SIZE:
@@ -18,7 +18,7 @@ memory_map:
 	mov	rax,	qword [ebx + STRUCTURE_MEMORY_MAP_ROW.limit]
 
 	; znaleziono?
-	cmp	rax,	KERNEL_BASE_address
+	cmp	qword [ebx + STRUCTURE_MEMORY_MAP_ROW.address],	KERNEL_BASE_address
 	je	.found	; tak
 
 	; ustaw adres na następny wiersz tablicy
