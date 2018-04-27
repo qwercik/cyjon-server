@@ -32,6 +32,18 @@ kernel_keyboard:
 	jmp	.end
 
 .continue:
+	; naciśnięto capslock?
+	cmp al, KEYBOARD_SCANCODE_CAPSLOCK
+	jne .no_press_capslock	; nie
+	
+	; zwróć do bufora programowego kod klawisza
+	mov ax, KERNEL_KEYBOARD_PRESS_CAPSLOCK
+
+	; zmień matryce klawiatury
+	jmp .shift
+
+
+.no_press_capslock:
 	; naciśnięto lewy klawisz shift?
 	cmp	al,	KEYBOARD_SCANCODE_SHIFT_LEFT
 	jne	.no_press_shift_left	; nie
